@@ -5,6 +5,11 @@
 
 > 🎴 **[Live Demo → wenboxia.github.io/liangyi](https://wenboxia.github.io/liangyi/)** — Interactive ink-wash workflow navigator
 
+<p align="center">
+  <img src="./docs/1.png" alt="Workflow view — Phase IV Development" width="48%" />
+  <img src="./docs/2.png" alt="Skill Family Architecture view" width="48%" />
+</p>
+
 A multi-model adversarial product development workflow for Claude Code.
 One product idea generates two opposing expert views.
 You synthesize the final decision from their structural tension.
