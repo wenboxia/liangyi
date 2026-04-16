@@ -1,0 +1,9 @@
+{
+  "name": "liangyi",
+  "version": "1.0.0",
+  "description": "Liangyi (两仪) — Multi-model adversarial product development workflow inspired by the I Ching. One idea generates two opposing expert views; you synthesize the decision from their structural tension. A Claude Code skill family orchestrator.",
+  "keywords": ["claude-code", "claude-skill", "agent-skills", "liangyi", "adversarial-review", "multi-model", "product-development", "prd", "best-minds", "workflow", "i-ching"],
+  "author": "WENBO XIA",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/wenboxia/liangyi" }
+}
