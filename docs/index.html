@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两仪 · Liangyi — AI Product Development Workflow</title>
+<meta name="description" content="A multi-model adversarial product development workflow for Claude Code. One idea, two opposing expert views, one synthesized decision — inspired by the I Ching.">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+html, body { margin: 0; padding: 0; height: 100%; background: #F5F1E8; }
+#root { height: 100%; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const T = {
+  en: {
+    title: "两仪 · Liangyi",
+    subtitle: "AI Product Dev Workflow v1.0 · One idea, two polarities, one decision",
+    modelNote: "Model B: Gemini recommended, GPT/Qwen/Doubao also work",
+    tabWorkflow: "Workflow",
+    tabFamily: "Skill Family",
+    copyBtn: "Copy",
+    copied: "Copied",
+    familyTitle: "Skill Family Architecture",
+    familyDesc: "Each module installs independently, or use the orchestrator for the full pipeline",
+    familyCustom: "Skills config is customizable: keep defaults or add/replace/remove to match your tools",
+    scenariosTitle: "Usage Scenarios",
+    sessionTitle: "Session Management",
+    sessionWarn: "Never paste into the wrong tab — it breaks the single-blind mechanism",
+    outputTitle: "Output Documents",
+    phases: [
+      { title: "Idea Capture", steps: [
+        { title: "Record raw idea", target: "You", desc: "Voice memo, rough notes, anything. Don't filter — preserve the rawest form." },
+        { title: "Model B language refinement", target: "Model B (Gemini recommended)", desc: "Remove filler words, refine language only. Don't change intent. GPT/Qwen/Doubao also work." },
+      ]},
+      { title: "Adversarial Brainstorm", steps: [
+        { title: "Select expert role pair", target: "You", desc: "Pick two roles with structural tension. If they'd give the same top-3 advice, tension is insufficient." },
+        { title: "Claude proposal (Role A)", target: "Claude", desc: "Generate proposal as assigned expert. Preserve professional biases. Pairs with Best Minds Skill." },
+        { title: "Model B proposal (Role B)", target: "Model B (new session 'Role B')", desc: "Independent proposal from a different expert. No context from Claude's output. Prompt auto-copied to clipboard." },
+        { title: "Human comparison + decision log", target: "You", desc: "The most irreplaceable human step. Compare both proposals, log every divergence point and your reasoning." },
+      ]},
+      { title: "Cross-Validation & Fusion", steps: [
+        { title: "Claude critique (investor role)", target: "Claude", desc: "Switch to skeptical investor persona. Find the 3 weakest points and the most likely cause of death." },
+        { title: "Model B single-blind review", target: "Model B (new session 'Blind Review')", desc: "Brand new session — NOT the Role B tab. No original idea, no background. Tests if the proposal speaks for itself." },
+        { title: "Model B informed re-review (optional)", target: "Model B (Role B session)", desc: "If blind review found major divergence, verify the fix didn't drift from original intent." },
+        { title: "Devil's advocate (on consensus)", target: "Claude or Model B", desc: "Complexity gate: only for core architecture/strategic decisions. Skip for UI tweaks and small features." },
+      ]},
+      { title: "Document Generation", steps: [
+        { title: "Generate PRD", target: "Claude Code", desc: "Full product requirements document from idea.md." },
+        { title: "PRD user perspective check", target: "Claude", desc: "AI simulates target user reading PRD. Logged as [REVIEW], not human decision." },
+        { title: "Technical spec", target: "Claude Code", desc: "Stack selection, module design, Skills dispatch table." },
+        { title: "CLAUDE.md", target: "Claude Code", desc: "Code conventions, Git workflow, testing, agent boundaries." },
+        { title: "Dev guide", target: "Claude Code", desc: "Step-by-step operator manual with Skill callouts and human decision markers." },
+      ]},
+      { title: "Development", steps: [
+        { title: "Launch development", target: "Claude Code", desc: "Load CLAUDE.md + tech-spec.md. Follow dev-guide.md phase by phase." },
+        { title: "Instant expert summon", target: "Claude Code", desc: "For technical dilemmas: summon domain expert. Reject 'both have pros and cons' answers." },
+      ]},
+    ],
+    scenarios: [
+      { title: "New project", desc: "All 4 modules" },
+      { title: "Quick brainstorm", desc: "expert-debate only" },
+      { title: "Review a doc", desc: "blind-review only" },
+      { title: "Generate docs", desc: "doc-generator only" },
+      { title: "Feature iteration", desc: "debate + decision-log" },
+      { title: "Any decision", desc: "decision-log only" },
+    ],
+    sessionRows: [
+      ["'Role B'", "Model B with your idea context", "P1B, P2C"],
+      ["'Blind Review'", "Model B with zero context", "P2B only"],
+    ],
+    outputs: [
+      { n: "idea.md", d: "Product concept" },
+      { n: "prd.md", d: "Requirements" },
+      { n: "tech-spec.md", d: "Architecture" },
+      { n: "CLAUDE.md", d: "Dev conventions" },
+      { n: "dev-guide.md", d: "Operator manual" },
+      { n: "decision-log.md", d: "Decision record" },
+      { n: "prompts/*.md", d: "Model B prompts" },
+    ],
+  },
+  zh: {
+    title: "两仪 · Liangyi",
+    subtitle: "AI 产品开发工作流 v1.0 · 一念生两仪，两仪成决策",
+    modelNote: "模型B推荐 Gemini，GPT/Qwen/豆包等均可",
+    tabWorkflow: "流程步骤",
+    tabFamily: "Skill 家族",
+    copyBtn: "复制",
+    copied: "已复制",
+    familyTitle: "Skill 家族架构",
+    familyDesc: "每个模块可独立安装，也可通过编排器一键使用全部",
+    familyCustom: "Skills 配置可自定义：保留默认推荐，也可增删改为你自己的工具",
+    scenariosTitle: "使用场景",
+    sessionTitle: "会话管理",
+    sessionWarn: "永远不要粘贴到错误的标签页 —— 这会破坏单盲审查机制",
+    outputTitle: "输出文档",
+    phases: [
+      { title: "Idea 捕获", steps: [
+        { title: "记录原始想法", target: "你自己", desc: "用语音备忘录或随手记录，不要过滤，保留最原始的表述。" },
+        { title: "模型B 精炼语言", target: "模型B（推荐 Gemini）", desc: "去掉口语化表述，只做语言层面的精炼，不改变原始意图。GPT/Qwen/豆包等也可以。" },
+      ]},
+      { title: "对抗式 Brainstorm", steps: [
+        { title: "选择专家角色对", target: "你自己", desc: "选择两个核心关注点有张力的专家角色。两个角色的优先级排序要天然冲突。" },
+        { title: "Claude 独立方案（角色A）", target: "Claude", desc: "以指定专家身份出方案，故意保留角色偏见。搭配 Best Minds Skill 效果更佳。" },
+        { title: "模型B 独立方案（角色B）", target: "模型B（新会话「角色B」）", desc: "不给 Claude 的任何输出。用另一个专家角色独立生成方案。Prompt 自动复制到剪贴板。" },
+        { title: "人工对比 + 决策日志", target: "你自己", desc: "这是整个流程中你作为「人」最不可替代的环节。对比两个专家方案，记录每个分歧点的选择理由。" },
+      ]},
+      { title: "交叉验证与融合", steps: [
+        { title: "Claude 批判（投资人角色）", target: "Claude", desc: "切换到怀疑态度的投资人角色审视融合方案。" },
+        { title: "模型B 单盲审查", target: "模型B（新会话「单盲审查」）", desc: "开全新会话（不是角色B的！），不给原始 idea，只评价方案本身。" },
+        { title: "模型B 知情复审（可选）", target: "模型B（角色B会话）", desc: "单盲审查发现偏差后，在原会话中确认修正方案没有偏离初衷。" },
+        { title: "拆台专家（趋同时触发）", target: "Claude 或 模型B", desc: "仅在核心架构/战略决策上触发（复杂度门槛）。UI 调整和小功能直接跳过。" },
+      ]},
+      { title: "文档体系生成", steps: [
+        { title: "生成 PRD", target: "Claude Code", desc: "基于 idea.md 生成完整 PRD。" },
+        { title: "PRD 用户视角校验", target: "Claude", desc: "AI 模拟目标用户读 PRD。标记为 [REVIEW]（AI 校验），非人类决策。" },
+        { title: "技术架构文档", target: "Claude Code", desc: "含 Skills 调度映射表。" },
+        { title: "CLAUDE.md 全局配置", target: "Claude Code", desc: "代码规范、Git 工作流、测试、Agent 边界。" },
+        { title: "开发操作指南", target: "Claude Code", desc: "逐步指南，含 Skill 调用和人工决策标注。" },
+      ]},
+      { title: "开发执行", steps: [
+        { title: "启动开发", target: "Claude Code", desc: "加载 CLAUDE.md + tech-spec.md，按 dev-guide.md 逐步推进。" },
+        { title: "即时专家召唤", target: "Claude Code", desc: "技术纠结时切专家模式，拒绝「两者各有优劣」。" },
+      ]},
+    ],
+    scenarios: [
+      { title: "新项目", desc: "全部 4 个模块" },
+      { title: "快速 brainstorm", desc: "仅 expert-debate" },
+      { title: "审查文档", desc: "仅 blind-review" },
+      { title: "生成文档", desc: "仅 doc-generator" },
+      { title: "功能迭代", desc: "debate + log" },
+      { title: "任何决策", desc: "仅 decision-log" },
+    ],
+    sessionRows: [
+      ["「角色B」", "知道 idea 的模型B", "P1B, P2C"],
+      ["「单盲审查」", "零上下文模型B", "仅 P2B"],
+    ],
+    outputs: [
+      { n: "idea.md", d: "产品想法" },
+      { n: "prd.md", d: "需求定义" },
+      { n: "tech-spec.md", d: "技术架构" },
+      { n: "CLAUDE.md", d: "开发规范" },
+      { n: "dev-guide.md", d: "操作指南" },
+      { n: "decision-log.md", d: "决策记录" },
+      { n: "prompts/*.md", d: "模型B 提示词" },
+    ],
+  },
+};
+
+const PROMPTS = {
+  "0-1": null,
+  "0-2": "You are a prompt refinement specialist. I have a rough product idea.\nPlease:\n1. Remove filler words, repetition, verbal tics\n2. Refine language only — do NOT change my intent\n3. Preserve all specific details and constraints\n4. Output a clean description (under 200 words)\n\nMy raw idea: [paste here]",
+  "1-0": "### [PROCESS] Decision 0: Expert role assignment\n- Claude's expert: [role + why]\n- Model B's expert: [role + why]\n- Tension rationale: [where they conflict]",
+  "1-1": "【Best Minds mode activated】\n\nYou are [Role A]. 20 years of domain experience.\nYour thinking, priorities, risk tolerance must match this role exactly.\n\nRules:\n- When your role conflicts with generic PM advice, follow your role\n- Mark conflicts: \"As [Role A], I prioritize X over Y because...\"\n- Preserve your role's blind spots — do not self-correct\n\nPlease:\n1. Core value proposition (your lens)\n2. Feasibility (dimensions you prioritize)\n3. Top 3 concerns (what keeps you up at night)\n4. Alternative approaches (2+)\n5. Recommended final shape\n\nMy idea: [paste refined idea]",
+  "1-2": "【Best Minds mode】\n\nYou are [Role B]. 20 years of domain experience.\n\nRules:\n- Give your honest professional judgment only\n- If something isn't your concern, say so\n- Mark how your role stance shapes your advice\n\nPlease:\n1. Does this idea target a real need? (your lens)\n2. Best product shape and core features\n3. Top 3 risks (your perspective)\n4. Your complete, independent proposal\n\nMy idea: [paste same refined idea]",
+  "1-3": "### [PRODUCT] Decision 1: Core direction\n- Role A position: [one line + role logic]\n- Role B position: [one line + role logic]\n- Core divergence: [what they disagree on]\n- My choice: [A / B / hybrid]\n- Reasoning: [why — what AI couldn't weigh]",
+  "2-0": "【Best Minds — role switch】\n\nDrop your previous role. You are now a skeptical senior investor.\n\n1. 3 weakest points + hardening suggestions\n2. Most likely cause of death\n3. Output an improved version\n\nProposal: [paste merged proposal]",
+  "2-1": "Here is a product proposal. I have no background info for you.\nEvaluate purely on its own merits:\n\n1. One sentence: what does this propose?\n2. Is the logic consistent? Where doesn't it read right?\n3. As an uninformed decision-maker, would you approve? Why?\n4. Ambiguous or vague parts?\n5. Improvement suggestions\n\nProposal:\n---\n[paste ONLY the proposal — no background, no original idea]\n---",
+  "2-2": "The proposal was revised after external review.\nYou know my original intent. Please evaluate:\n1. Does the revision still align with my core goal?\n2. Did clarity improvements sacrifice anything important?\n3. Remaining issues?\n\nRevised proposal: [paste]",
+  "2-3": "【Best Minds — Devil's advocate】\n\nYou are [domain's most famous skeptic].\nThis passed two independent reviews with no major issues.\n\n1. 2+ assumptions that will be proven wrong in 6 months\n2. Paths reviewers missed due to anchoring\n3. How would a competitor defeat this?\n4. \"At minimum, validate ______ first\"\n\nProposal: [paste]",
+  "3-0": "Create a comprehensive PRD from the following product idea.\n\nInclude: overview, target users, feature table (P0/P1/P2),\nuser stories, info architecture, MVP scope, success metrics,\nmulti-agent assessment.\n\nProduct idea: [reference idea.md]",
+  "3-1": "【Best Minds — target user simulation】\n\nYou are [target user persona]. Non-technical.\nYou only care if this solves your problem.\n\n1. What does this product do? (one plain sentence)\n2. What pain does it solve?\n3. Would you use it? Why?\n4. What would make you quit?\n5. What's missing that you need?\n\nPRD: [paste draft]",
+  "4-1": "【Best Minds — instant decision】\n\nWho in the world knows [domain] best?\nAnswer as that person:\n\n[Your technical question]\n\nRequirements:\n- Give a recommendation with conviction\n- Explain \"if you chose the other, I'd worry about...\"\n- Draw on real-world experience",
+};
+
+const STEP_META = [
+  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
+  [{ bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: false, hk: true, ki: false, opt: false, cond: false, rev: false, skill: null }],
+  [{ bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: false, hk: false, ki: true, opt: false, cond: false, rev: false, skill: null },
+   { bm: false, hk: false, ki: false, opt: true, cond: false, rev: false, skill: null },
+   { bm: true, hk: false, ki: false, opt: false, cond: true, rev: false, skill: null }],
+  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "PM Skills" },
+   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: true, skill: null },
+   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "Everything CC" },
+   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
+   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
+  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "Superpowers" },
+   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
+];
+
+const ROLE_TABLE = [
+  ["Payments / Finance", "Security Architect", "Growth Hacker"],
+  ["Social / Content", "UX Designer", "Data Monetization Lead"],
+  ["Tools / Productivity", "Minimalist PM", "Full-Stack Architect"],
+  ["AI / Technical", "AI Researcher", "Commercialization Director"],
+  ["Education", "Ed Psychologist", "Gamification Designer"],
+];
+const ROLE_TABLE_ZH = [
+  ["支付/金融类", "安全架构师", "增长黑客"],
+  ["社交/内容类", "用户体验设计师", "数据变现专家"],
+  ["工具/效率类", "极简主义产品经理", "功能全栈架构师"],
+  ["AI/技术类", "AI 研究员", "商业化运营总监"],
+  ["教育类", "教育心理学家", "游戏化设计师"],
+];
+
+// Ink palette
+const INK = {
+  paper: "#F5F1E8",
+  paperWarm: "#FBF7ED",
+  ink: "#1A1614",
+  inkMed: "#3D3530",
+  inkLight: "#6B5D4F",
+  inkSubtle: "#958C7E",
+  inkFaint: "#C8BFB0",
+  vermilion: "#A02C2C",
+  qingdai: "#3E5D6C",
+};
+
+const FONT = {
+  serif: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif",
+  sc: "'Noto Serif SC', serif",
+  mono: "'JetBrains Mono', 'SF Mono', monospace",
+};
+
+// Roman numerals for phase numbers
+const ROMAN = ["O", "I", "II", "III", "IV"];
+
+const MODS = [
+  { name: "expert-debate", en: "Role selection + adversarial brainstorm", zh: "角色选择 + 对抗 brainstorm" },
+  { name: "blind-review", en: "Single-blind audit + devil's advocate", zh: "单盲审查 + 拆台专家" },
+  { name: "doc-generator", en: "PRD + tech spec + CLAUDE.md", zh: "PRD + tech spec + CLAUDE.md" },
+  { name: "decision-log", en: "Log human choices + reasoning", zh: "记录人类决策 + 推理" },
+];
+
+// Hero Taiji with two martial arts figures
+function TaijiHero() {
+  return (
+    <svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
+      <defs>
+        <radialGradient id="yang-wash" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="#2C2620" stopOpacity="1"/>
+          <stop offset="70%" stopColor="#1A1614" stopOpacity="0.96"/>
+          <stop offset="100%" stopColor="#1A1614" stopOpacity="0.85"/>
+        </radialGradient>
+        <filter id="brush" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="5"/>
+          <feDisplacementMap in="SourceGraphic" scale="1.5"/>
+        </filter>
+        <filter id="ink-bleed">
+          <feGaussianBlur stdDeviation="0.25"/>
+        </filter>
+      </defs>
+      <circle cx="75" cy="75" r="68" fill="none" stroke="#1A1614" strokeWidth="0.8" opacity="0.1" filter="url(#ink-bleed)"/>
+      <circle cx="75" cy="75" r="66" fill="none" stroke="#1A1614" strokeWidth="0.5" opacity="0.12"/>
+      <path d="M 75 10 C 111 10, 140 39, 140 75 C 140 111, 111 140, 75 140 C 57 140, 43 125, 43 107 C 43 89, 57 75, 75 75 C 93 75, 107 61, 107 43 C 107 25, 93 10, 75 10 Z" fill="url(#yang-wash)" filter="url(#brush)"/>
+      <circle cx="75" cy="75" r="65" fill="none" stroke="#1A1614" strokeWidth="1.3" opacity="0.9" filter="url(#brush)"/>
+      <path d="M 75 10 C 57 10, 43 25, 43 43 C 43 61, 57 75, 75 75 C 93 75, 107 89, 107 107 C 107 125, 93 140, 75 140" fill="none" stroke="#1A1614" strokeWidth="1.1" opacity="0.8" filter="url(#brush)"/>
+      {/* WHITE FIGURE on dark (yang) half */}
+      <g transform="translate(102, 60)">
+        <circle cx="0" cy="-11" r="3.2" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
+        <path d="M -2.2 -7.8 C -2.8 -4, -3 0, -2.5 4 C -2.3 5, -1 5, -0.5 4.5 C 0.5 1, 0.8 -3, 0.3 -7 C 0 -8, -1.5 -8.5, -2.2 -7.8 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.45"/>
+        <path d="M -1.5 -7 C -4 -8.5, -7.5 -9, -10 -7.5 C -10.5 -7, -10 -6, -9 -6.3 C -6 -6.5, -3 -5.8, -1.5 -5 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
+        <path d="M 0.5 -6 C 2.5 -5, 4 -3, 4.5 0 C 4.5 1, 3.8 1.2, 3.3 0.3 C 2.3 -1.5, 1 -3, 0 -4.3 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
+        <path d="M -1.5 3.8 C -2.5 7, -3.5 10, -3 14 C -2.7 14.5, -1.5 14.5, -1.3 13.8 C -0.5 10, 0 6.5, 0 4 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
+        <path d="M 0.5 3.5 C 2 5.5, 4 7.5, 6 9 C 6.8 9.5, 7 9, 6.5 8.3 C 4 6, 2.5 4, 1.2 2.8 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
+      </g>
+      {/* BLACK FIGURE on white (yin) half */}
+      <g transform="translate(48, 90)">
+        <circle cx="0" cy="-11" r="3.2" fill="#1A1614"/>
+        <path d="M 2 -8 C 3 -5, 3.5 -1, 2.5 3 C 2 4, 0.5 4.2, 0 3.5 C -0.8 0, -1 -4, -0.5 -7 C -0.2 -8.3, 1 -8.5, 2 -8 Z" fill="#1A1614"/>
+        <path d="M 1.5 -7 C -1 -8.5, -5 -9.5, -9 -9 C -10 -8.8, -9.8 -7.5, -8.8 -7.5 C -5 -7, -1.5 -5.5, 0 -4.8 Z" fill="#1A1614"/>
+        <path d="M 2.5 -6.5 C 5 -7, 7 -5.5, 8 -2.5 C 8.2 -1.5, 7.2 -1, 6.8 -2 C 5.5 -4, 4 -5, 2.5 -5.5 Z" fill="#1A1614"/>
+        <path d="M 0.5 3.2 C 1.5 6, 2.5 10, 2 14 C 1.7 14.8, 0.5 14.8, 0.2 14 C -0.5 10, -1 6, -1 3.5 Z" fill="#1A1614"/>
+        <path d="M 1.5 2 C 4 0, 8 -2, 11 -5 C 12 -5.8, 11.5 -7, 10.5 -6.3 C 7 -4, 3.5 -1, 1 0.5 Z" fill="#1A1614"/>
+      </g>
+      {/* Eye dots */}
+      <circle cx="75" cy="43" r="4.5" fill="#1A1614" opacity="0.95"/>
+      <circle cx="75" cy="107" r="4.5" fill="#F5F1E8"/>
+      <circle cx="75" cy="107" r="4.5" fill="none" stroke="#1A1614" strokeWidth="0.3" opacity="0.3"/>
+      {/* Ink splashes */}
+      <circle cx="138" cy="30" r="1.2" fill="#1A1614" opacity="0.2"/>
+      <circle cx="12" cy="118" r="1" fill="#1A1614" opacity="0.18"/>
+      <circle cx="135" cy="125" r="0.7" fill="#1A1614" opacity="0.15"/>
+      <circle cx="8" cy="45" r="0.6" fill="#1A1614" opacity="0.12"/>
+    </svg>
+  );
+}
+
+// Small ink dot for phase nav
+function InkDot({ active }) {
+  if (active) {
+    return (
+      <svg viewBox="0 0 30 30" style={{ width: "100%", height: "100%" }}>
+        <defs>
+          <filter id="ink-splash-active">
+            <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="3"/>
+            <feDisplacementMap in="SourceGraphic" scale="1.2"/>
+          </filter>
+        </defs>
+        <circle cx="15" cy="15" r="9" fill={INK.ink} filter="url(#ink-splash-active)"/>
+        <circle cx="15" cy="15" r="11" fill={INK.ink} opacity="0.15" filter="url(#ink-splash-active)"/>
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 30 30" style={{ width: "100%", height: "100%" }}>
+      <circle cx="15" cy="15" r="6" fill="none" stroke={INK.inkSubtle} strokeWidth="0.8"/>
+    </svg>
+  );
+}
+
+// Wavy ink underline for active tab
+function WavyUnderline() {
+  return (
+    <svg viewBox="0 0 80 4" preserveAspectRatio="none" style={{ position: "absolute", bottom: 2, left: 0, width: "100%", height: 4 }}>
+      <path d="M2 2 Q 15 0, 30 2 T 60 2 T 78 2" stroke={INK.ink} fill="none" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+    </svg>
+  );
+}
+
+function CopyBtn({ text, lang }) {
+  const [ok, setOk] = useState(false);
+  const t = T[lang];
+  return (
+    <button
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setOk(true);
+          setTimeout(() => setOk(false), 2000);
+        } catch {}
+      }}
+      style={{
+        position: "absolute",
+        top: 8,
+        right: 8,
+        background: INK.vermilion,
+        color: INK.paperWarm,
+        border: "none",
+        padding: "4px 10px",
+        fontFamily: FONT.mono,
+        fontSize: 9.5,
+        fontWeight: 500,
+        cursor: "pointer",
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        lineHeight: 1.3,
+        borderRadius: 1,
+      }}
+    >
+      {ok ? t.copied : t.copyBtn}
+    </button>
+  );
+}
+
+// Small tag (seal-like)
+function Tag({ children, kind }) {
+  const styles = {
+    bm: { background: INK.ink, color: INK.paperWarm },
+    hk: { background: INK.vermilion, color: INK.paperWarm },
+    ki: { background: INK.qingdai, color: INK.paperWarm },
+    opt: { background: "transparent", color: INK.inkLight, border: `0.5px solid ${INK.inkFaint}` },
+    cond: { background: INK.inkMed, color: INK.paperWarm },
+    rev: { background: INK.paperWarm, color: INK.qingdai, border: `0.5px solid ${INK.qingdai}` },
+    skill: { background: INK.paperWarm, color: INK.inkMed, border: `0.5px solid ${INK.inkFaint}` },
+    target: { background: "transparent", color: INK.inkMed },
+  };
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "2px 8px",
+      fontFamily: FONT.mono,
+      fontSize: 9,
+      fontWeight: 500,
+      letterSpacing: "0.12em",
+      textTransform: "uppercase",
+      lineHeight: 1.5,
+      borderRadius: 1,
+      ...styles[kind],
+    }}>
+      {children}
+    </span>
+  );
+}
+
+// Target with ink dot
+function TargetTag({ target }) {
+  let color = INK.inkSubtle;
+  if (target.includes("Claude") && !target.toLowerCase().includes("model")) color = INK.ink;
+  else if (target.includes("Model") || target.includes("模型")) color = INK.qingdai;
+  else if (target.includes("You") || target.includes("你")) color = INK.vermilion;
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+      fontFamily: FONT.serif,
+      fontStyle: "italic",
+      fontSize: 13,
+      color: INK.inkMed,
+      letterSpacing: "0.01em",
+    }}>
+      <span style={{
+        width: 6,
+        height: 6,
+        display: "block",
+        flexShrink: 0,
+        borderRadius: "50%",
+        background: color,
+      }}/>
+      {target}
+    </span>
+  );
+}
+
+function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
+  const [open, setOpen] = useState(false);
+  const prompt = PROMPTS[promptKey];
+  const romanLower = ["i.", "ii.", "iii.", "iv.", "v."][index] || "·";
+
+  return (
+    <div style={{
+      background: INK.paperWarm,
+      border: `0.5px solid ${open ? INK.inkMed : INK.inkFaint}`,
+      borderRadius: 2,
+      marginBottom: 10,
+      position: "relative",
+      transition: "all 0.3s",
+      boxShadow: open ? "2px 3px 10px rgba(26, 22, 20, 0.06)" : "none",
+    }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          padding: "13px 16px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 12,
+          userSelect: "none",
+        }}
+      >
+        <div style={{
+          fontFamily: FONT.serif,
+          fontSize: 14,
+          color: open ? INK.vermilion : INK.inkLight,
+          lineHeight: 1,
+          paddingTop: 4,
+          fontStyle: "italic",
+          fontWeight: 500,
+          minWidth: 22,
+          letterSpacing: "0.05em",
+          transition: "color 0.3s",
+        }}>
+          {romanLower}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 6,
+          }}>
+            <span style={{
+              fontFamily: FONT.serif,
+              fontWeight: 600,
+              fontSize: 16,
+              color: INK.ink,
+              letterSpacing: "0.005em",
+              lineHeight: 1.3,
+            }}>
+              {step.title}
+            </span>
+            {meta.bm && <Tag kind="bm">Best Minds</Tag>}
+            {meta.hk && <Tag kind="hk">{lang === "en" ? "Human" : "人工决策"}</Tag>}
+            {meta.ki && <Tag kind="ki">{lang === "en" ? "Single-blind" : "单盲"}</Tag>}
+            {meta.opt && <Tag kind="opt">{lang === "en" ? "Optional" : "可选"}</Tag>}
+            {meta.cond && <Tag kind="cond">{lang === "en" ? "Conditional" : "条件"}</Tag>}
+            {meta.rev && <Tag kind="rev">REVIEW</Tag>}
+            {meta.skill && <Tag kind="skill">{meta.skill}</Tag>}
+          </div>
+          <TargetTag target={step.target} />
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: "2px 16px 16px 50px" }}>
+          <p style={{
+            fontFamily: FONT.serif,
+            fontSize: 14,
+            color: INK.inkMed,
+            lineHeight: 1.7,
+            marginBottom: 12,
+            margin: "0 0 12px",
+          }}>
+            {step.desc}
+          </p>
+          {roleTable && (
+            <div style={{ marginBottom: 12, overflowX: "auto" }}>
+              <table style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontFamily: FONT.serif,
+                fontSize: 12,
+              }}>
+                <thead>
+                  <tr style={{ borderBottom: `0.5px solid ${INK.inkFaint}` }}>
+                    <th style={{ padding: "6px 8px", textAlign: "left", color: INK.inkSubtle, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Type" : "类型"}
+                    </th>
+                    <th style={{ padding: "6px 8px", textAlign: "left", color: INK.ink, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Role A" : "角色A"}
+                    </th>
+                    <th style={{ padding: "6px 8px", textAlign: "left", color: INK.qingdai, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Role B" : "角色B"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roleTable.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: `0.5px solid ${INK.paperWarm}` }}>
+                      <td style={{ padding: "6px 8px", color: INK.inkMed }}>{r[0]}</td>
+                      <td style={{ padding: "6px 8px", color: INK.ink, fontWeight: 500 }}>{r[1]}</td>
+                      <td style={{ padding: "6px 8px", color: INK.qingdai, fontWeight: 500 }}>{r[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {prompt && (
+            <div style={{ position: "relative" }}>
+              <pre style={{
+                background: "#1E1914",
+                color: "#D4C9B5",
+                padding: "36px 14px 14px",
+                borderRadius: 2,
+                fontFamily: FONT.mono,
+                fontSize: 11,
+                lineHeight: 1.75,
+                overflowX: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                margin: 0,
+              }}>{prompt}</pre>
+              <CopyBtn text={prompt} lang={lang} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FamilyView({ lang }) {
+  const t = T[lang];
+  return (
+    <div style={{ padding: "24px 28px 60px" }}>
+      <h2 style={{
+        fontFamily: FONT.serif,
+        fontSize: 26,
+        fontWeight: 500,
+        color: INK.ink,
+        margin: "0 0 6px",
+        letterSpacing: "0.01em",
+        textAlign: "center",
+      }}>
+        {t.familyTitle}
+      </h2>
+      <p style={{
+        fontFamily: FONT.serif,
+        fontSize: 13,
+        color: INK.inkMed,
+        textAlign: "center",
+        margin: "0 0 4px",
+        lineHeight: 1.6,
+      }}>
+        {t.familyDesc}
+      </p>
+      <p style={{
+        fontFamily: FONT.serif,
+        fontStyle: "italic",
+        fontSize: 12,
+        color: INK.inkSubtle,
+        textAlign: "center",
+        margin: "0 0 24px",
+      }}>
+        {t.familyCustom}
+      </p>
+
+      {/* Main orchestrator card */}
+      <div style={{
+        background: INK.paperWarm,
+        border: `1px solid ${INK.vermilion}`,
+        padding: "14px 16px",
+        textAlign: "center",
+        marginBottom: 8,
+        borderRadius: 2,
+      }}>
+        <div style={{
+          fontFamily: FONT.mono,
+          fontSize: 14,
+          fontWeight: 600,
+          color: INK.vermilion,
+          letterSpacing: "0.02em",
+        }}>liangyi</div>
+        <div style={{
+          fontFamily: FONT.serif,
+          fontStyle: "italic",
+          fontSize: 12,
+          color: INK.inkMed,
+          marginTop: 3,
+        }}>{lang === "en" ? "Full orchestrator · 5 phases" : "完整编排器 · 5 阶段"}</div>
+        <code style={{
+          fontFamily: FONT.mono,
+          fontSize: 9,
+          color: INK.inkSubtle,
+          display: "block",
+          marginTop: 6,
+          letterSpacing: "0.02em",
+        }}>npx skills add wenboxia/liangyi</code>
+      </div>
+
+      {/* Connector lines */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 40, margin: "0 0 6px" }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{ width: 1, height: 16, background: INK.inkFaint }} />
+        ))}
+      </div>
+
+      {/* Modules */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 8,
+        marginBottom: 28,
+      }}>
+        {MODS.map(m => (
+          <div key={m.name} style={{
+            background: INK.paperWarm,
+            borderLeft: `2px solid ${INK.ink}`,
+            border: `0.5px solid ${INK.inkFaint}`,
+            borderLeftWidth: 2,
+            borderLeftColor: INK.ink,
+            padding: "10px 12px",
+            borderRadius: 2,
+          }}>
+            <div style={{
+              fontFamily: FONT.mono,
+              fontSize: 12,
+              fontWeight: 600,
+              color: INK.ink,
+              letterSpacing: "0.01em",
+            }}>{m.name}</div>
+            <div style={{
+              fontFamily: FONT.serif,
+              fontSize: 11,
+              color: INK.inkMed,
+              marginTop: 3,
+              lineHeight: 1.5,
+            }}>{lang === "en" ? m.en : m.zh}</div>
+            <code style={{
+              fontFamily: FONT.mono,
+              fontSize: 8,
+              color: INK.inkSubtle,
+              display: "block",
+              marginTop: 5,
+              letterSpacing: "0.02em",
+            }}>npx skills add wenboxia/{m.name}</code>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={{
+        fontFamily: FONT.serif,
+        fontSize: 17,
+        fontWeight: 500,
+        color: INK.ink,
+        margin: "0 0 10px",
+        letterSpacing: "0.02em",
+      }}>
+        {t.scenariosTitle}
+      </h3>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 8,
+        marginBottom: 28,
+      }}>
+        {t.scenarios.map((s, i) => (
+          <div key={s.title} style={{
+            background: INK.paperWarm,
+            border: `0.5px solid ${INK.inkFaint}`,
+            padding: "9px 12px",
+            borderRadius: 2,
+          }}>
+            <div style={{
+              fontFamily: FONT.serif,
+              fontSize: 13,
+              fontWeight: 600,
+              color: INK.ink,
+            }}>{s.title}</div>
+            <div style={{
+              fontFamily: FONT.serif,
+              fontStyle: "italic",
+              fontSize: 11,
+              color: INK.inkMed,
+              marginTop: 2,
+            }}>{s.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={{
+        fontFamily: FONT.serif,
+        fontSize: 17,
+        fontWeight: 500,
+        color: INK.ink,
+        margin: "0 0 10px",
+        letterSpacing: "0.02em",
+      }}>
+        {t.sessionTitle}
+      </h3>
+      <div style={{
+        background: INK.paperWarm,
+        border: `0.5px solid ${INK.inkFaint}`,
+        borderRadius: 2,
+        overflow: "hidden",
+        marginBottom: 6,
+      }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: `0.5px solid ${INK.inkFaint}` }}>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                {lang === "en" ? "Tab" : "标签"}
+              </th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                {lang === "en" ? "Content" : "内容"}
+              </th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                {lang === "en" ? "Phase" : "阶段"}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {t.sessionRows.map((r, i) => (
+              <tr key={i} style={{ borderBottom: i < t.sessionRows.length - 1 ? `0.5px solid ${INK.paper}` : "none" }}>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.mono, fontSize: 11, color: INK.ink }}>{r[0]}</td>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.serif, fontSize: 12, color: INK.inkMed }}>{r[1]}</td>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, letterSpacing: "0.05em" }}>{r[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{
+        fontFamily: FONT.serif,
+        fontStyle: "italic",
+        fontSize: 11,
+        color: INK.inkSubtle,
+        textAlign: "center",
+        margin: "0 0 28px",
+      }}>
+        {t.sessionWarn}
+      </p>
+
+      <h3 style={{
+        fontFamily: FONT.serif,
+        fontSize: 17,
+        fontWeight: 500,
+        color: INK.ink,
+        margin: "0 0 10px",
+        letterSpacing: "0.02em",
+      }}>
+        {t.outputTitle}
+      </h3>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+        gap: 6,
+      }}>
+        {t.outputs.map((d, i) => (
+          <div key={d.n} style={{
+            background: INK.paperWarm,
+            border: `0.5px solid ${INK.inkFaint}`,
+            borderLeft: `2px solid ${INK.ink}`,
+            padding: "7px 9px",
+            borderRadius: 2,
+          }}>
+            <div style={{
+              fontFamily: FONT.mono,
+              fontSize: 10,
+              fontWeight: 600,
+              color: INK.ink,
+              letterSpacing: 0,
+            }}>{d.n}</div>
+            <div style={{
+              fontFamily: FONT.serif,
+              fontStyle: "italic",
+              fontSize: 10,
+              color: INK.inkSubtle,
+              marginTop: 1,
+            }}>{d.d}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getPromptKey(pi, si) {
+  const keys = [
+    ["0-1", "0-2"],
+    ["1-0", "1-1", "1-2", "1-3"],
+    ["2-0", "2-1", "2-2", "2-3"],
+    ["3-0", "3-1", null, null, null],
+    [null, "4-1"],
+  ];
+  return keys[pi]?.[si] || null;
+}
+
+function App() {
+  const [lang, setLang] = useState("en");
+  const [tab, setTab] = useState("workflow");
+  const [ap, setAp] = useState(0);
+  const ref = useRef(null);
+  const t = T[lang];
+
+  // Inject Google Fonts
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Noto+Serif+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    return () => {
+      try { document.head.removeChild(link); } catch {}
+    };
+  }, []);
+
+  useEffect(() => {
+    ref.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [ap, tab]);
+
+  const phase = t.phases[ap];
+
+  return (
+    <div style={{
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      background: INK.paper,
+      fontFamily: FONT.serif,
+      color: INK.ink,
+      lineHeight: 1.6,
+      position: "relative",
+    }}>
+      {/* Paper texture overlay */}
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        backgroundImage: `repeating-linear-gradient(93deg, transparent 0, rgba(139, 131, 120, 0.015) 1px, transparent 2.5px), radial-gradient(ellipse 45% 35% at 95% 8%, rgba(26, 22, 20, 0.05) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 0% 95%, rgba(26, 22, 20, 0.04) 0%, transparent 55%)`,
+        pointerEvents: "none",
+        zIndex: 0,
+      }}/>
+
+      {/* Header with taiji hero */}
+      <div style={{
+        padding: "20px 20px 18px",
+        position: "relative",
+        flexShrink: 0,
+        zIndex: 1,
+      }}>
+        {/* Lang toggle — vermilion seal */}
+        <button
+          onClick={() => setLang(lang === "en" ? "zh" : "en")}
+          style={{
+            position: "absolute",
+            top: 22,
+            right: 20,
+            width: 30,
+            height: 30,
+            background: INK.vermilion,
+            border: "none",
+            color: INK.paperWarm,
+            fontFamily: FONT.sc,
+            fontWeight: 500,
+            fontSize: 12,
+            cursor: "pointer",
+            transition: "transform 0.3s",
+            letterSpacing: 0,
+            lineHeight: 1,
+            zIndex: 2,
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = "rotate(-3deg)"}
+          onMouseLeave={(e) => e.currentTarget.style.transform = "rotate(0deg)"}
+        >
+          {lang === "en" ? "中" : "EN"}
+        </button>
+
+        {/* Taiji hero */}
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          margin: "6px auto 14px",
+          width: 110,
+          height: 110,
+        }}>
+          <TaijiHero />
+        </div>
+
+        {/* Title block */}
+        <div style={{ textAlign: "center" }}>
+          <h1 style={{
+            fontFamily: FONT.serif,
+            fontSize: 34,
+            fontWeight: 400,
+            letterSpacing: "0.04em",
+            color: INK.ink,
+            lineHeight: 1,
+            margin: "0 0 4px",
+          }}>
+            {t.title}
+          </h1>
+          <p style={{
+            fontFamily: FONT.serif,
+            fontStyle: "italic",
+            fontSize: 12,
+            color: INK.inkMed,
+            letterSpacing: "0.01em",
+            margin: "8px 0 3px",
+            lineHeight: 1.5,
+            padding: "0 12px",
+          }}>
+            {t.subtitle}
+          </p>
+          <p style={{
+            fontFamily: FONT.mono,
+            fontSize: 9,
+            color: INK.inkSubtle,
+            letterSpacing: "0.12em",
+            margin: "4px 0 0",
+          }}>
+            {t.modelNote}
+          </p>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{
+        height: 1,
+        background: `linear-gradient(to right, transparent, ${INK.inkLight} 15%, ${INK.inkLight} 85%, transparent)`,
+        opacity: 0.25,
+        margin: "0 28px",
+        flexShrink: 0,
+        zIndex: 1,
+      }}/>
+
+      {/* Tabs */}
+      <div style={{
+        display: "flex",
+        padding: "16px 28px 0",
+        gap: 28,
+        justifyContent: "center",
+        flexShrink: 0,
+        zIndex: 1,
+      }}>
+        {[{ k: "workflow", l: t.tabWorkflow }, { k: "family", l: t.tabFamily }].map(tb => (
+          <button
+            key={tb.k}
+            onClick={() => setTab(tb.k)}
+            style={{
+              fontFamily: FONT.serif,
+              fontSize: 17,
+              color: tab === tb.k ? INK.ink : INK.inkSubtle,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "6px 0 14px",
+              position: "relative",
+              letterSpacing: "0.04em",
+              fontWeight: 500,
+              transition: "color 0.3s",
+            }}
+          >
+            {tb.l}
+            {tab === tb.k && <WavyUnderline />}
+          </button>
+        ))}
+      </div>
+
+      {/* Phase Nav */}
+      {tab === "workflow" && (
+        <div style={{
+          padding: "18px 40px 12px",
+          position: "relative",
+          flexShrink: 0,
+          zIndex: 1,
+        }}>
+          {/* Track line */}
+          <div style={{
+            position: "absolute",
+            top: 33,
+            left: 60,
+            right: 60,
+            height: 0.5,
+            background: INK.inkLight,
+            opacity: 0.2,
+            zIndex: 0,
+          }}/>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            position: "relative",
+            zIndex: 1,
+          }}>
+            {t.phases.map((ph, i) => (
+              <button
+                key={i}
+                onClick={() => setAp(i)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  flex: 1,
+                }}
+              >
+                <div style={{ width: 26, height: 26 }}>
+                  <InkDot active={ap === i} />
+                </div>
+                <div style={{
+                  fontFamily: FONT.mono,
+                  fontSize: 10,
+                  color: ap === i ? INK.ink : INK.inkSubtle,
+                  letterSpacing: "0.15em",
+                  fontWeight: 500,
+                  transition: "color 0.3s",
+                }}>
+                  P{i}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div ref={ref} style={{ flex: 1, overflow: "auto", zIndex: 1, position: "relative" }}>
+        {tab === "family" ? (
+          <FamilyView lang={lang} />
+        ) : (
+          <div style={{ padding: "18px 28px 60px" }}>
+            {/* Phase header */}
+            <div style={{
+              marginBottom: 22,
+              display: "flex",
+              alignItems: "baseline",
+              gap: 14,
+            }}>
+              <div style={{
+                fontFamily: FONT.serif,
+                fontSize: 48,
+                fontWeight: 300,
+                fontStyle: "italic",
+                color: INK.inkFaint,
+                lineHeight: 1,
+                letterSpacing: "-0.02em",
+                flexShrink: 0,
+              }}>
+                {ROMAN[ap]}
+              </div>
+              <div>
+                <div style={{
+                  fontFamily: FONT.serif,
+                  fontSize: 24,
+                  fontWeight: 500,
+                  color: INK.ink,
+                  letterSpacing: "0.01em",
+                  lineHeight: 1.15,
+                }}>
+                  {phase.title}
+                </div>
+                <div style={{
+                  fontFamily: FONT.mono,
+                  fontSize: 10,
+                  color: INK.vermilion,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  marginTop: 3,
+                  fontWeight: 500,
+                }}>
+                  Phase {String(ap).padStart(2, "0")}
+                </div>
+              </div>
+            </div>
+
+            {/* Steps */}
+            {phase.steps.map((s, si) => (
+              <StepCard
+                key={`${ap}-${si}`}
+                step={s}
+                meta={STEP_META[ap][si]}
+                promptKey={getPromptKey(ap, si)}
+                lang={lang}
+                index={si}
+                roleTable={ap === 1 && si === 0 ? (lang === "en" ? ROLE_TABLE : ROLE_TABLE_ZH) : null}
+              />
+            ))}
+
+            {/* Phase navigation */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: 24,
+              gap: 10,
+            }}>
+              {ap > 0 && (
+                <button
+                  onClick={() => setAp(ap - 1)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 12px",
+                    background: "transparent",
+                    border: `0.5px solid ${INK.inkFaint}`,
+                    borderRadius: 2,
+                    fontFamily: FONT.serif,
+                    fontStyle: "italic",
+                    fontSize: 13,
+                    color: INK.inkMed,
+                    cursor: "pointer",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  ← Phase {String(ap - 1).padStart(2, "0")}
+                </button>
+              )}
+              {ap < t.phases.length - 1 && (
+                <button
+                  onClick={() => setAp(ap + 1)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 12px",
+                    background: INK.ink,
+                    border: "none",
+                    borderRadius: 2,
+                    fontFamily: FONT.serif,
+                    fontStyle: "italic",
+                    fontSize: 13,
+                    color: INK.paperWarm,
+                    cursor: "pointer",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Phase {String(ap + 1).padStart(2, "0")} →
+                </button>
+              )}
+            </div>
+
+            {/* Footer colophon — only on last phase */}
+            {ap === t.phases.length - 1 && (
+              <div style={{
+                marginTop: 40,
+                padding: "24px 0 0",
+                textAlign: "center",
+              }}>
+                <div style={{
+                  width: 48,
+                  height: 0.5,
+                  background: INK.inkLight,
+                  margin: "0 auto 18px",
+                  opacity: 0.4,
+                }}/>
+                <div style={{
+                  fontFamily: FONT.sc,
+                  fontSize: 14,
+                  color: INK.inkMed,
+                  letterSpacing: "0.08em",
+                  marginBottom: 4,
+                }}>
+                  太极生两仪，两仪生四象
+                </div>
+                <div style={{
+                  fontFamily: FONT.serif,
+                  fontStyle: "italic",
+                  fontSize: 12,
+                  color: INK.inkLight,
+                  letterSpacing: "0.02em",
+                }}>
+                  From one, two. From two, four.
+                </div>
+                <div style={{
+                  marginTop: 14,
+                  fontFamily: FONT.mono,
+                  fontSize: 9,
+                  color: INK.inkSubtle,
+                  letterSpacing: "0.25em",
+                  textTransform: "uppercase",
+                }}>
+                  Liangyi · v1.0
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@
 > **太极生两仪** — *The Supreme Ultimate generates the Two Polarities.*
 > — 《易经·系辞》 / *I Ching, Great Commentary*
 
+> 🎴 **[Live Demo → wenboxia.github.io/liangyi](https://wenboxia.github.io/liangyi/)** — Interactive ink-wash workflow navigator
+
 A multi-model adversarial product development workflow for Claude Code.
 One product idea generates two opposing expert views.
 You synthesize the final decision from their structural tension.
@@ -121,6 +123,15 @@ The workflow uses multiple Model B sessions. Label your browser tabs to avoid mi
 > AI models should produce structured disagreement, not smoothed consensus.
 > The I Ching taught this 3,000 years ago: complexity emerges from polarity,
 > not uniformity."
+
+## Deep Dive
+
+Read the full methodology whitepaper:
+
+- 📘 [Methodology — English](./docs/METHODOLOGY.md)
+- 📗 [完整方法论 — 中文](./docs/METHODOLOGY.zh-CN.md)
+
+Includes phase-by-phase breakdowns, decision-gate rules, Model B prompt templates, session-management protocols, and the reasoning behind every design choice.
 
 ## License
 
