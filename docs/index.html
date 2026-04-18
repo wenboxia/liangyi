@@ -111,7 +111,7 @@ const T = {
         { title: "Claude 独立方案（角色A）", target: "Claude", desc: "以指定专家身份出方案，故意保留角色偏见。搭配 Best Minds Skill 效果更佳。" },
         { title: "模型B 独立方案（角色B）", target: "模型B（新会话「角色B」）", desc: "不给 Claude 的任何输出。用另一个专家角色独立生成方案。Prompt 自动复制到剪贴板。" },
         { title: "人工对比 + 决策日志", target: "你自己", desc: "这是整个流程中你作为「人」最不可替代的环节。对比两个专家方案，记录每个分歧点的选择理由。" },
-        { title: "生成融合方案（idea.md）", target: "Claude", desc: "Claude 基于两个角色方案和你的决策日志，合成一份立场统一的 idea.md——干净的产品产物，不保留「角色 A 说 X」的双声音痕迹。Phase 2 的审查者只看这个文件。" },
+        { title: "生成融合方案（idea.md）", target: "Claude", desc: "Claude 综合两个角色方案与决策日志，输出一份立场统一的 idea.md——干净的产品产物，不保留「角色 A 说 X」的双声音痕迹。Phase 2 的审查者只看这个文件。" },
       ]},
       { title: "交叉验证与融合", steps: [
         { title: "Claude 批判（投资人角色）", target: "Claude", desc: "切换到怀疑态度的投资人角色审视融合方案。" },
