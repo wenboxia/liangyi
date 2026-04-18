@@ -141,6 +141,12 @@ Read the full methodology whitepaper:
 
 Includes phase-by-phase breakdowns, decision-gate rules, Model B prompt templates, session-management protocols, and the reasoning behind every design choice.
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history.
+
+Current version: **v1.1.0**
+
 ## License
 
 MIT
