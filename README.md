@@ -6,11 +6,7 @@
 > 🎴 **[Live Demo → wenboxia.github.io/liangyi](https://wenboxia.github.io/liangyi/)** — Interactive ink-wash workflow navigator
 
 <p align="center">
-  <img src="./docs/1.png" alt="Workflow view — Phase IV Development" width="100%" />
-</p>
-
-<p align="center">
-  <img src="./docs/2.png" alt="Skill Family Architecture view" width="100%" />
+  <img src="./docs/1.png" alt="Liangyi workflow preview" width="100%" />
 </p>
 
 A multi-model adversarial product development workflow for Claude Code.
