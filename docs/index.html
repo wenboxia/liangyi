@@ -18,179 +18,1269 @@ html, body { margin: 0; padding: 0; height: 100%; background: #F5F1E8; }
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
+// ============================================================================
+// i18n · 两仪 Liangyi · 纯操作层（原理/推导归 docs/）
+// ============================================================================
+
 const T = {
   en: {
     title: "两仪 · Liangyi",
-    subtitle: "AI Product Dev Workflow v1.0 · One idea, two polarities, one decision",
-    modelNote: "Model B: Gemini recommended, GPT/Qwen/Doubao also work",
+    subtitle: "AI Product Dev Methodology · One idea, two polarities, one decision",
+    modelNote: "Default: Claude × 4 + DeepSeek × 2 + Qwen × 1 · cross-dimension is a hard rule, specific models can swap",
+    tabOverview: "Overview",
+    returnToOverview: "← Overview",
     tabWorkflow: "Workflow",
-    tabFamily: "Skill Family",
+    tabCombinations: "Reference Combinations",
+    tabMechanisms: "Core Mechanisms",
     copyBtn: "Copy",
     copied: "Copied",
-    familyTitle: "Skill Family Architecture",
-    familyDesc: "Each module installs independently, or use the orchestrator for the full pipeline",
-    familyCustom: "Skills config is customizable: keep defaults or add/replace/remove to match your tools",
-    scenariosTitle: "Usage Scenarios",
-    sessionTitle: "Session Management",
-    sessionWarn: "Never paste into the wrong tab — it breaks the single-blind mechanism",
+    sessionTitle: "Session Window Map",
+    sessionWarn: "Seven core windows. Cross-pasting breaks single-blind / author-neutrality — fatal.",
     outputTitle: "Output Documents",
+    crossDimTitle: "Cross-Dimension · Hard Rule",
+    crossDimDesc: "The P2 chain (2A / 2B / 2C / 2D) must cross at least one dimension of the base-model coordinate. Same-coordinate coverage = fake coverage.",
+    dimAName: "Dim A · Alignment path",
+    dimAValues: "A1 Constitutional+RLAIF · A2 classical RLHF · A3 GRPO-family · A4 RLVR",
+    dimBName: "Dim B · Corpus culture",
+    dimBValues: "B1 English-native · B2 Chinese-native · B3 cross-cultural dual-core",
+    combinationsFooter: "Specific model names age fast (Opus / R1 / Qwen versions). The cross-dimension hard rule does not.",
+    heroDef: "A product-development methodology countering AI's dissolution of human independent judgment.",
+    heroStageNote: "Stage-stable · 2026-04",
+    archTitle: "Full-Process Architecture",
+    archNote: "22 steps · 5 phases · 9-session window map",
+    archLegend: {
+      mainFlow: "Standard step",
+      humanOnly: "Human-only decision",
+      hardRule: "Hard-rule step",
+      conditional: "Triggered",
+      optional: "Optional",
+      lockPoint: "idea.md lock point",
+    },
+    archStepShort: {
+      "0.0": "Raw record",
+      "0.1": "Refine",
+      "1.0": "Role pair",
+      "1.1": "A proposal",
+      "1.2": "B proposal",
+      "1.3": "Human synthesis",
+      "1.4": "Write idea.md",
+      "2A": "Critique",
+      "2A-fix": "Fix",
+      "2B": "Blind review",
+      "2B-fix": "Fix",
+      "2C": "Drift check",
+      "2C-rollback": "Rollback",
+      "2D": "Teardown",
+      "2D-fix": "Handle",
+      "3.1": "PRD",
+      "3.1.1": "User sim",
+      "3.2": "Tech Spec",
+      "3.3": "CLAUDE.md",
+      "3.4": "Dev Guide",
+      "4.1": "Load & build",
+      "4.2": "Expert summon",
+    },
+    highlightsTitle: "Methodology Highlights",
+    highlights: [
+      {
+        tag: "DIVERGENCE > CAPABILITY",
+        title: "Cross-dimension adversarial design",
+        main: "Two structurally diverging models as opposing experts make cognitive tension explicit — divergence before capability is a counter-intuitive design choice.",
+        sub: "Information theory + cognitive science + SVD triangulate \"2 is the optimal count\" · P2 chain crossing base-model coordinates (dim A alignment × dim B corpus) is a hard rule.",
+      },
+      {
+        tag: "SESSION SEPARATION",
+        title: "9-window role-mapping system",
+        main: "7 core + 2 optional independent sessions. Each window carries one responsibility with no shared context — counters the worst failure mode of \"all roles contaminating each other\".",
+        sub: "Claude-1~4 / DeepSeek-1-3 / Qwen-1-2 · Role contamination = one AI playing many roles → blind review stops being blind, synthesis stops being neutral, critique stops being independent.",
+      },
+      {
+        tag: "FOUR-AXIS",
+        title: "Four-axis divergence framework",
+        main: "AI identity / persona / context / scope — four independent axes. Each P2 step activates exactly one axis; not coincidence but a dual projection of failure modes and divergence axes.",
+        sub: "Cross-axis constraint: persona is bounded by AI identity — teardown cannot be Claude, because RLHF softens attacks at critical moments.",
+      },
+      {
+        tag: "REVIEW BUDGET",
+        title: "Blind + triggered second-order critique",
+        main: "P2B blind review attacks the curse of knowledge with zero context (hard rule) + P2D triggered second-order critique fires only when tri-party consensus is too smooth — turning \"tri-party consensus = alarm\" into a trigger condition.",
+        sub: "Linear four-round micro-cycle + P2C double role — covering self-consistency failure mode while serving as a linear-chain backstop.",
+      },
+      {
+        tag: "FOUR SYMBOLS + LOCK",
+        title: "Four-symbols engineering docs + idea.md lock",
+        main: "P3 outputs PRD / Tech Spec / CLAUDE.md / Dev Guide — four perspectives echoing the I Ching's Four Symbols. The P2/P3 boundary locks idea.md, preventing \"sunk work hijacking human decisions\" — an anti-slippery-slope guard.",
+        sub: "Human is the sole synthesis position · Critic does not rewrite · Red line against multi-agent auto-negotiation.",
+      },
+    ],
+    enterDetailBtn: "↓ Enter detailed section",
+    ideaLockLabel: "idea.md · LOCK",
     phases: [
-      { title: "Idea Capture", steps: [
-        { title: "Record raw idea", target: "You", desc: "Voice memo, rough notes, anything. Don't filter — preserve the rawest form." },
-        { title: "Model B language refinement", target: "Model B (Gemini recommended)", desc: "Remove filler words, refine language only. Don't change intent. GPT/Qwen/Doubao also work." },
+      { title: "Idea Refinement", steps: [
+        { title: "Record the raw idea", target: "You", desc: "Voice memo, rough notes — anything. Do not filter: preserve the rawest form." },
+        { title: "Claude-1 · Refine the wording", target: "Claude-1 (new session)", desc: "Remove filler; clean phrasing only. Do NOT change intent, do NOT extend, do NOT question. Claude's RLHF makes it the best fit for faithful rewording." },
       ]},
       { title: "Adversarial Brainstorm", steps: [
-        { title: "Select expert role pair", target: "You", desc: "Pick two roles with structural tension. If they'd give the same top-3 advice, tension is insufficient." },
-        { title: "Claude proposal (Role A)", target: "Claude", desc: "Generate proposal as assigned expert. Preserve professional biases. Pairs with Best Minds Skill." },
-        { title: "Model B proposal (Role B)", target: "Model B (new session 'Role B')", desc: "Independent proposal from a different expert. No context from Claude's output. Prompt auto-copied to clipboard." },
-        { title: "Human comparison + decision log", target: "You", desc: "The most irreplaceable human step. Compare both proposals, log every divergence point and your reasoning." },
-        { title: "Synthesize merged proposal (idea.md)", target: "Claude", desc: "Based on both role proposals and the decision log, Claude outputs a unified idea.md — clean product artifact with no 'Role A said X' traces. Phase 2 reviewers see only this file." },
+        { title: "Pick the expert role pair", target: "You", desc: "Two roles with structural tension — if their top-3 priorities would line up, tension is insufficient. Role A → Claude-1 (A1·B1 — Constitutional+RLAIF / English-native). Role B → DeepSeek-1 (A4·B3 — RLVR / cross-cultural dual-core)." },
+        { title: "Claude-1 · Role A proposal", target: "Claude-1 (continue P0)", desc: "Continue the P0 window — Claude-1 already holds the refined idea. Preserve Role A's professional biases; do not self-correct." },
+        { title: "DeepSeek-1 · Role B proposal", target: "DeepSeek-1 (new session, independent)", desc: "Must NOT see Claude-1's output — anchoring would collapse divergence. Feed it ONLY the P0 refined idea." },
+        { title: "Human synthesis + decision-log.md", target: "You (no AI)", desc: "The most irreplaceable human step. Read both proposals side-by-side, log every divergence and the reasoning behind your choice." },
+        { title: "Claude-2 · Write idea.md", target: "Claude-2 (new session)", desc: "Fresh window — Claude-1 played Role A and is biased. Claude-2 is a role-neutral author. Output a unified idea.md with no 'Role A said X' traces." },
       ]},
-      { title: "Cross-Validation & Fusion", steps: [
-        { title: "Claude critique (investor role)", target: "Claude", desc: "Switch to skeptical investor persona. Find the 3 weakest points and the most likely cause of death." },
-        { title: "Model B single-blind review", target: "Model B (new session 'Blind Review')", desc: "Brand new session — NOT the Role B tab. No original idea, no background. Tests if the proposal speaks for itself." },
-        { title: "Model B informed re-review (optional)", target: "Model B (Role B session)", desc: "If blind review found major divergence, verify the fix didn't drift from original intent." },
-        { title: "Devil's advocate (on consensus)", target: "Claude or Model B", desc: "Complexity gate: only for core architecture/strategic decisions. Skip for UI tweaks and small features." },
+      { title: "Cross-Validation · Linear 4-Step Chain", steps: [
+        { title: "2A · Investor critique", target: "Claude-3 (new session)", desc: "Fresh window so there is no author burden — Claude-2 wrote idea.md. Claude-3 plays a skeptical investor: 3 weakest points + most likely cause of death. Critique only, no rewrites." },
+        { title: "2A-fix · Revise idea.md", target: "Claude-2 (continue)", desc: "Human decides which critiques land and writes the modification instructions. Claude-2 (the author) executes — consistency demands a single author across all revisions." },
+        { title: "2B · Blind review", target: "Qwen-1 (new session, ZERO context)", desc: "Must be from a distinct coordinate (not Claude's A1·B1, not DeepSeek's A4·B3). Feed it ONLY the current idea.md — no background, no goals, no history. The hard-rule prompt below is non-negotiable." },
+        { title: "2B-fix · Revise idea.md", target: "Claude-2 (continue)", desc: "Same flow as 2A-fix. Human judges the blind feedback, Claude-2 revises." },
+        { title: "2C · Direction-drift review", target: "Claude-4 (new session)", desc: "Needs a 4th Claude window — Claude-1 is Role A, Claude-2 is the author, Claude-3 is the critic. Claude-4 compares idea.md v1 vs current and exposes cumulative drift. NOT an error list." },
+        { title: "2C-rollback · Reverse drift", target: "Claude-2 (continue)", desc: "If P2C flags drift off the original intent, the human writes rollback instructions for Claude-2." },
+        { title: "2D · Devil's advocate (triggered)", target: "DeepSeek-2 (new session) — triggered when 2A/2B/2C all pass smoothly", desc: "Must be an A3/A4 alignment path — Claude's A1 RLAIF would soften the attack at critical moments. Attack the framing and premise, not details. The hard-rule prompt below is non-negotiable." },
+        { title: "2D-fix · Handle the teardown", target: "Claude-2 (continue) OR restart at P1", desc: "Frame-level challenge (wrong direction) → restart at P1. Within-frame challenge (assumption needs defending) → Claude-2 revises." },
       ]},
-      { title: "Document Generation", steps: [
-        { title: "Generate PRD", target: "Claude Code", desc: "Full product requirements document from idea.md." },
-        { title: "PRD user perspective check", target: "Claude", desc: "AI simulates target user reading PRD. Logged as [REVIEW], not human decision." },
-        { title: "Technical spec", target: "Claude Code", desc: "Stack selection, module design, Skills dispatch table." },
-        { title: "CLAUDE.md", target: "Claude Code", desc: "Code conventions, Git workflow, testing, agent boundaries." },
-        { title: "Dev guide", target: "Claude Code", desc: "Step-by-step operator manual with Skill callouts and human decision markers." },
+      { title: "Document Generation · Four Symbols", steps: [
+        { title: "3.1 · Generate PRD", target: "Claude-2 (continue)", desc: "Full product requirements — 14 standard modules (overview, target users, feature table P0/P1/P2, user stories, IA, MVP scope, metrics, etc). Claude-2 knows idea.md best." },
+        { title: "3.1.1 · Target-user simulation", target: "Qwen-2 (new session) · optional", desc: "Simulate the target user reading the PRD — must be fresh context, did not touch idea.md discussion. Marked [REVIEW], not a human decision." },
+        { title: "3.2 · Tech Spec", target: "Claude-2 (continue)", desc: "NOT an autonomous-execution spec — AI cannot reliably self-invoke skills (2026-04 state). This is AI's local reference book: stack, modules, data model, APIs, skill-dispatch map." },
+        { title: "3.3 · CLAUDE.md", target: "Claude-2 (continue)", desc: "Global project protocol — code conventions, Git workflow, testing, agent boundaries. 12 sections covering project-level norms." },
+        { title: "3.4 · Dev Guide", target: "Claude-2 (continue)", desc: "Novice's operational manual. 11 sections with skill invocation timing, human decision markers, and AI-stuck fallbacks. The human drives Claude Code using this guide." },
       ]},
       { title: "Development", steps: [
-        { title: "Launch development", target: "Claude Code", desc: "Load CLAUDE.md + tech-spec.md. Follow dev-guide.md phase by phase." },
-        { title: "Instant expert summon", target: "Claude Code", desc: "For technical dilemmas: summon domain expert. Reject 'both have pros and cons' answers." },
+        { title: "Load docs and start build", target: "Claude Code", desc: "Load CLAUDE.md + tech-spec.md. Work through dev-guide.md phase by phase, calling skills at the marked points." },
+        { title: "Instant expert summon (triggered)", target: "DeepSeek-3 (new session, on demand)", desc: "For stuck technical decisions: open a fresh session, summon the world-class expert, demand a conviction answer, close the session." },
       ]},
     ],
-    scenarios: [
-      { title: "New project", desc: "All 4 modules" },
-      { title: "Quick brainstorm", desc: "expert-debate only" },
-      { title: "Review a doc", desc: "blind-review only" },
-      { title: "Generate docs", desc: "doc-generator only" },
-      { title: "Feature iteration", desc: "debate + decision-log" },
-      { title: "Any decision", desc: "decision-log only" },
-    ],
     sessionRows: [
-      ["'Role B'", "Model B with your idea context", "P1B, P2C"],
-      ["'Blind Review'", "Model B with zero context", "P2B only"],
+      ["Claude-1", "Claude · A1·B1", "P0 refiner / Role A", "P0, P1.1"],
+      ["Claude-2", "Claude · A1·B1", "idea.md author + all revisions", "P1.4, 2A/B/C-fix, 2C-rollback, 2D-fix, all P3"],
+      ["Claude-3", "Claude · A1·B1", "Investor critic", "P2A"],
+      ["Claude-4", "Claude · A1·B1", "Drift-detector", "P2C"],
+      ["DeepSeek-1", "DeepSeek · A4·B3", "Role B expert", "P1.2"],
+      ["DeepSeek-2", "DeepSeek · A4·B3", "Devil's advocate (triggered)", "P2D"],
+      ["Qwen-1", "Qwen · A3·B3", "Blind reviewer", "P2B"],
+      ["Qwen-2 (optional)", "Qwen · A3·B3", "Target-user simulation", "P3.1.1"],
+      ["DeepSeek-3 (optional)", "DeepSeek · A4·B3", "Dev-phase tech advisor", "P4.2"],
     ],
     outputs: [
-      { n: "idea.md", d: "Product concept" },
-      { n: "prd.md", d: "Requirements" },
-      { n: "tech-spec.md", d: "Architecture" },
-      { n: "CLAUDE.md", d: "Dev conventions" },
+      { n: "P0-refined-idea.md", d: "Refined raw idea" },
+      { n: "P1A-expert-a-proposal.md", d: "Role A proposal" },
+      { n: "P1B-expert-b-proposal.md", d: "Role B proposal" },
+      { n: "decision-log.md", d: "Human decisions · full trace" },
+      { n: "idea.md", d: "Unified proposal (versioned)" },
+      { n: "P2A-critique.md", d: "Investor critique" },
+      { n: "P2B-blind-review.md", d: "Blind review" },
+      { n: "P2C-review.md", d: "Drift-detector review" },
+      { n: "P2D-devils-advocate.md", d: "Teardown (if triggered)" },
+      { n: "prd.md", d: "Product requirements · 14 modules" },
+      { n: "tech-spec.md", d: "Tech architecture" },
+      { n: "CLAUDE.md", d: "Global project protocol" },
       { n: "dev-guide.md", d: "Operator manual" },
-      { n: "decision-log.md", d: "Decision record" },
-      { n: "prompts/*.md", d: "Model B prompts" },
     ],
+    combinations: {
+      intro: "These are reference combinations — cross-dimension is the hard rule. Specific model names may age; swap freely as long as the P2 chain crosses at least one coordinate dimension.",
+      cards: [
+        {
+          tag: "DEFAULT",
+          title: "Default combination",
+          condition: "Claude accessible · strongest divergence (both dimensions)",
+          rows: [
+            ["Claude-1 ~ Claude-4", "Claude Opus / Sonnet", "A1·B1"],
+            ["DeepSeek-1 / DeepSeek-2", "DeepSeek V3.2", "A4·B3"],
+            ["Qwen-1", "Qwen3.6-Max", "A3·B3"],
+          ],
+          distribution: "Both dimensions divergent ✓ (strict)",
+          note: null,
+          kind: "primary",
+        },
+        {
+          tag: "ALT A",
+          title: "Claude unavailable",
+          condition: "Region / account blocks — Claude swapped to Gemini",
+          rows: [
+            ["Gemini-1 ~ Gemini-4", "Gemini 3.1 Pro", "A2·B1"],
+            ["DeepSeek-1 / DeepSeek-2", "DeepSeek V3.2", "A4·B3"],
+            ["Qwen-1", "Qwen3.6-Max", "A3·B3"],
+          ],
+          distribution: "Both dimensions divergent ✓",
+          note: "Gemini (A2·B1) uses classical RLHF instead of Constitutional+RLAIF; idea.md authoring stability slightly weaker than Claude, but architectural divergence direction differs — may expose different blind spots.",
+          kind: "alt",
+        },
+        {
+          tag: "ALT B",
+          title: "Single-coordinate Chinese-side",
+          condition: "Limited to one Chinese-side model (e.g., only DeepSeek)",
+          rows: [
+            ["Claude-1 ~ Claude-4", "Claude", "A1·B1"],
+            ["DeepSeek-1 / DeepSeek-2 / Qwen-1", "Same Chinese-side model · 3 independent sessions", "A4·B3 (or A3·B3)"],
+          ],
+          distribution: "Lenient ✓ (dim A + dim B across sides; Chinese side collapsed to one coord)",
+          note: "P2B and P2D share the same Chinese-side coordinate (different sessions) — divergence is weaker than default. Tighten P2B prompt discipline to compensate.",
+          kind: "alt",
+        },
+        {
+          tag: "VIOLATION",
+          title: "Same-coordinate full coverage",
+          condition: "Do NOT use — violates hard rule four",
+          rows: [
+            ["Claude × 4 + GPT × 2 + Gemini × 1", "All A1/A2·B1", "Fake divergence"],
+            ["Claude × 7 (different window numbers)", "All A1·B1", "Fake divergence"],
+          ],
+          distribution: "Single-coordinate × 7 ✗",
+          note: "Same-coordinate models share alignment stack and corpus culture, and therefore share value blind spots. Four 'independent' critiques can all miss the same dimension.",
+          kind: "bad",
+        },
+      ],
+    },
+    mechanisms: {
+      intro: "Operational rules the user needs to honor to run the methodology correctly. For full derivations see docs/.",
+      sections: [
+        {
+          tag: "RULE · 1",
+          title: "Four-axis divergence",
+          body: "Every pair of windows should diverge on: AI identity (which model) · persona (which role) · context (fresh or continued session) · scope (full idea.md or narrow slice). If two windows are identical on all four axes, they are one critic, not two.",
+        },
+        {
+          tag: "HARD RULE · 2",
+          title: "Cross-dimension across the P2 chain",
+          body: "Base-model coordinate has two axes — Dim A alignment path (A1 Constitutional+RLAIF / A2 classical RLHF / A3 GRPO-family / A4 RLVR) and Dim B corpus culture (B1 English-native / B2 Chinese-native / B3 cross-cultural dual-core). The P2 chain (2A / 2B / 2C / 2D) must cross at least one dimension (lenient) — the default pair (Claude A1·B1 vs DeepSeek A4·B3) crosses both (strict). Same-coordinate models share alignment stack and corpus culture, and therefore share value blind spots. All-Claude coverage = fake coverage.",
+        },
+        {
+          tag: "HARD RULE · 3",
+          title: "P2B · Blind means zero context",
+          body: "Qwen-1 at P2B receives ONLY idea.md. No background, no goals, no 'this is for seniors' — the moment you brief the blind reviewer, they start guessing your intent and P2B collapses. The prompt explicitly forbids filling-in gaps or suggesting improvements.",
+        },
+        {
+          tag: "RULE · 4",
+          title: "Author ≠ critic (window separation)",
+          body: "Claude-2 writes idea.md and does all revisions (consistency). Claude-3 critiques (fresh window — no author burden). Claude-4 checks drift (fresh — not anchored to critique stance). Reusing one Claude window for multiple roles collapses the mechanism.",
+        },
+        {
+          tag: "RULE · 5",
+          title: "Linear chain prevents cognitive overload",
+          body: "2A → fix → 2B → fix → 2C → fix → 2D → fix, one at a time. Batching four critiques forces the human to hold four frames simultaneously and discount some. Linear processing gives each critique its own judgment window. P2C exists as the drift backstop.",
+        },
+        {
+          tag: "RULE · 6",
+          title: "P2C surfaces drift, not errors",
+          body: "P2C is not 'a fourth round of error-finding' — detail errors belong to 2A. P2C asks: after responding to 2A + 2B, did we drift from the original core positioning? It compares idea.md v1 vs current, surfaces cumulative drift, and asks the human to decide whether to accept the new direction.",
+        },
+      ],
+    },
   },
   zh: {
     title: "两仪 · Liangyi",
-    subtitle: "AI 产品开发工作流 v1.0 · 一念生两仪，两仪成决策",
-    modelNote: "模型B推荐 Gemini，GPT/Qwen/豆包等均可",
-    tabWorkflow: "流程步骤",
-    tabFamily: "Skill 家族",
+    subtitle: "AI 产品开发方法论 · 一念生两仪，两仪成决策",
+    modelNote: "默认：Claude × 4 + DeepSeek × 2 + Qwen × 1 · 跨维度是硬规则，具体模型可替换",
+    tabOverview: "概览",
+    returnToOverview: "← 返回概览",
+    tabWorkflow: "流程",
+    tabCombinations: "参考组合",
+    tabMechanisms: "核心机制",
     copyBtn: "复制",
     copied: "已复制",
-    familyTitle: "Skill 家族架构",
-    familyDesc: "每个模块可独立安装，也可通过编排器一键使用全部",
-    familyCustom: "Skills 配置可自定义：保留默认推荐，也可增删改为你自己的工具",
-    scenariosTitle: "使用场景",
-    sessionTitle: "会话管理",
-    sessionWarn: "永远不要粘贴到错误的标签页 —— 这会破坏单盲审查机制",
+    sessionTitle: "窗口对照表",
+    sessionWarn: "七个核心窗口各司其职。粘错会破坏单盲/作者中立 —— 致命错误。",
     outputTitle: "输出文档",
+    crossDimTitle: "底模坐标跨维度 · 硬规则",
+    crossDimDesc: "P2 链条（2A / 2B / 2C / 2D）必须跨底模坐标至少一维。同坐标覆盖 = 假覆盖。",
+    dimAName: "维度 A · 对齐路径",
+    dimAValues: "A1 Constitutional+RLAIF · A2 传统 RLHF · A3 GRPO 家族算法 · A4 RLVR 纯规则",
+    dimBName: "维度 B · 语料文化",
+    dimBValues: "B1 英文母语 · B2 中文母语 · B3 跨文化双核",
+    combinationsFooter: "具体模型名（Opus / V3 / Qwen 版本）会随市场过期。跨维度硬规则不会。",
+    heroDef: "对抗 AI 溶解人独立判断的产品开发方法论。",
+    heroStageNote: "方法论阶段性稳定 · 2026-04",
+    archTitle: "全流程架构",
+    archNote: "22 步 · 5 阶段 · 9 窗口角色映射",
+    archLegend: {
+      mainFlow: "标准步骤",
+      humanOnly: "人工决策",
+      hardRule: "硬规则步骤",
+      conditional: "触发式",
+      optional: "可选",
+      lockPoint: "idea.md 锁定点",
+    },
+    archStepShort: {
+      "0.0": "原始记录",
+      "0.1": "精炼语言",
+      "1.0": "选角色对",
+      "1.1": "A 方案",
+      "1.2": "B 方案",
+      "1.3": "人工综合",
+      "1.4": "写 idea.md",
+      "2A": "投资人批判",
+      "2A-fix": "修改",
+      "2B": "单盲复审",
+      "2B-fix": "修改",
+      "2C": "漂移审",
+      "2C-rollback": "回退",
+      "2D": "拆台",
+      "2D-fix": "处理",
+      "3.1": "PRD",
+      "3.1.1": "用户校验",
+      "3.2": "Tech Spec",
+      "3.3": "CLAUDE.md",
+      "3.4": "Dev Guide",
+      "4.1": "加载开发",
+      "4.2": "专家召唤",
+    },
+    highlightsTitle: "方法论特色",
+    highlights: [
+      {
+        tag: "跨维度对抗",
+        title: "Divergence 优先于 capability",
+        main: "2 个结构性分歧的模型充当对立专家，使认知张力显性化——divergence 优先于 capability 是反直觉设计。",
+        sub: "信息论 + 认知科学 + SVD 三证据推导「2 是最优数量」· P2 链条跨底模坐标（维度 A 对齐路径 × 维度 B 语料文化）是硬规则。",
+      },
+      {
+        tag: "窗口分离",
+        title: "9 窗口角色映射系统",
+        main: "7 核 + 2 可选独立 session，每窗口职责单一、上下文不共享——对抗「所有角色污染在一起」的最致命失败模式。",
+        sub: "Claude-1~4 / DeepSeek-1-3 / Qwen-1-2 · 角色污染 = 一个 AI 扮演多角色 → 单盲不单盲、综合不中立、批判不独立。",
+      },
+      {
+        tag: "四轴框架",
+        title: "四轴 divergence 框架",
+        main: "AI identity / persona / context / scope 四个独立轴——P2 的四步正好各激活一轴，不是巧合，是 failure mode 与 divergence 轴的双投影。",
+        sub: "跨轴约束：persona 受 AI identity 限制——拆台不能让 Claude 做，因为 RLHF 会在关键处软化攻击。",
+      },
+      {
+        tag: "审查预算",
+        title: "单盲 + 触发式二阶批判",
+        main: "P2B 单盲复审零上下文攻击知识诅咒（硬规则）+ P2D 触发式二阶批判只在三方共识过强时启动——把「三方共识即警报」机制化处理成触发条件。",
+        sub: "Linear 四次小循环 + P2C 双重角色——覆盖整体自洽 failure mode 同时给 linear 打散兜底。",
+      },
+      {
+        tag: "四象 + 锁定",
+        title: "四象工程文档 + idea.md 锁定点",
+        main: "P3 产出 PRD / Tech Spec / CLAUDE.md / Dev Guide 四份独立视角文档（对应《易经》四象）+ P2/P3 边界 idea.md 锁定——防「已投入工作反向绑架人的决策」的滑坡。",
+        sub: "人是唯一综合位置 · 批判不改方案 · 红线反对 AI 多 Agent 自动协商。",
+      },
+    ],
+    enterDetailBtn: "↓ 进入深度查阅",
+    ideaLockLabel: "idea.md · 锁定",
     phases: [
-      { title: "Idea 捕获", steps: [
-        { title: "记录原始想法", target: "你自己", desc: "用语音备忘录或随手记录，不要过滤，保留最原始的表述。" },
-        { title: "模型B 精炼语言", target: "模型B（推荐 Gemini）", desc: "去掉口语化表述，只做语言层面的精炼，不改变原始意图。GPT/Qwen/豆包等也可以。" },
+      { title: "Idea 精炼", steps: [
+        { title: "记录原始想法", target: "你自己", desc: "语音备忘录、随手记录、任何形式。不要过滤，保留最原始的表述。" },
+        { title: "Claude-1 · 精炼语言", target: "Claude-1（新开）", desc: "只去口语化、精炼表述，不改变原始意图、不扩展、不质疑。Claude 的 RLHF 训练让它最擅长忠实重组表达。" },
       ]},
       { title: "对抗式 Brainstorm", steps: [
-        { title: "选择专家角色对", target: "你自己", desc: "选择两个核心关注点有张力的专家角色。两个角色的优先级排序要天然冲突。" },
-        { title: "Claude 独立方案（角色A）", target: "Claude", desc: "以指定专家身份出方案，故意保留角色偏见。搭配 Best Minds Skill 效果更佳。" },
-        { title: "模型B 独立方案（角色B）", target: "模型B（新会话「角色B」）", desc: "不给 Claude 的任何输出。用另一个专家角色独立生成方案。Prompt 自动复制到剪贴板。" },
-        { title: "人工对比 + 决策日志", target: "你自己", desc: "这是整个流程中你作为「人」最不可替代的环节。对比两个专家方案，记录每个分歧点的选择理由。" },
-        { title: "生成融合方案（idea.md）", target: "Claude", desc: "Claude 综合两个角色方案与决策日志，输出一份立场统一的 idea.md——干净的产品产物，不保留「角色 A 说 X」的双声音痕迹。Phase 2 的审查者只看这个文件。" },
+        { title: "选择专家角色对", target: "你自己", desc: "两个核心关注点天然冲突的专家——若 top-3 优先级会撞车，张力不够。角色 A → Claude-1（A1·B1——Constitutional+RLAIF / 英文母语）。角色 B → DeepSeek-1（A4·B3——RLVR / 跨文化双核）。" },
+        { title: "Claude-1 · 专家 A 方案", target: "Claude-1（续 P0）", desc: "续窗口——Claude-1 已持有精炼想法。故意保留 A 的角色偏见，不要自我纠偏。" },
+        { title: "DeepSeek-1 · 专家 B 方案", target: "DeepSeek-1（新开，独立 session）", desc: "绝不能看到 Claude-1 的方案——锚定会让 divergence 坍塌。只喂 P0 精炼想法。" },
+        { title: "人工综合 + decision-log.md", target: "你自己（无 AI 参与）", desc: "全流程人最不可替代的环节。对比两份方案，记录每个分歧点与选择理由。" },
+        { title: "Claude-2 · 执笔 idea.md", target: "Claude-2（新开）", desc: "新开窗口——Claude-1 扮演过角色 A 已带立场。Claude-2 是中立执笔者。输出立场统一的 idea.md，不保留「角色 A 说 X」的双声音痕迹。" },
       ]},
-      { title: "交叉验证与融合", steps: [
-        { title: "Claude 批判（投资人角色）", target: "Claude", desc: "切换到怀疑态度的投资人角色审视融合方案。" },
-        { title: "模型B 单盲审查", target: "模型B（新会话「单盲审查」）", desc: "开全新会话（不是角色B的！），不给原始 idea，只评价方案本身。" },
-        { title: "模型B 知情复审（可选）", target: "模型B（角色B会话）", desc: "单盲审查发现偏差后，在原会话中确认修正方案没有偏离初衷。" },
-        { title: "拆台专家（趋同时触发）", target: "Claude 或 模型B", desc: "仅在核心架构/战略决策上触发（复杂度门槛）。UI 调整和小功能直接跳过。" },
+      { title: "交叉验证 · Linear 四步链", steps: [
+        { title: "2A · 投资人批判", target: "Claude-3（新开）", desc: "新开窗口排除作者包袱——Claude-2 是 idea.md 作者。Claude-3 扮演怀疑论投资人：3 个最弱点 + 最可能的死因。只批判，不重写。" },
+        { title: "2A-fix · 修改 idea.md", target: "Claude-2（续）", desc: "人判断哪些批判接受、哪些是噪音，写修改指令。Claude-2（作者）执行——一致性要求修改必须由同一个执笔者完成。" },
+        { title: "2B · 单盲复审", target: "Qwen-1（新开，零上下文）", desc: "必须来自不同坐标（不是 Claude 的 A1·B1、不是 DeepSeek 的 A4·B3）。只喂 idea.md，不给任何背景、目标、历史。下方硬规则 prompt 不可协商。" },
+        { title: "2B-fix · 修改 idea.md", target: "Claude-2（续）", desc: "和 2A-fix 同流程。人判断单盲反馈，Claude-2 修改。" },
+        { title: "2C · 方向漂移审", target: "Claude-4（新开）", desc: "需要第 4 个 Claude 窗口——Claude-1 是角色 A、Claude-2 是作者、Claude-3 是批判者。Claude-4 对比 idea.md v1 和当前版，暴露累积漂移。不是错漏列表。" },
+        { title: "2C-rollback · 回退漂移", target: "Claude-2（续）", desc: "若 P2C 指出某处偏离原意，人给 Claude-2 写回退指令。" },
+        { title: "2D · 拆台专家（触发式）", target: "DeepSeek-2（新开）· 触发条件：2A/2B/2C 全部顺利通过", desc: "必须来自 A3/A4 对齐路径——Claude 的 A1 RLAIF 会在关键处软化攻击。只拆框架和前提假设，不拆细节。下方硬规则 prompt 不可协商。" },
+        { title: "2D-fix · 处理拆台", target: "Claude-2（续）或回到 P1", desc: "框架级质疑（方向可能错）→ 回 P1 重做。框架内质疑（假设需加强论证）→ Claude-2 修改。" },
       ]},
-      { title: "文档体系生成", steps: [
-        { title: "生成 PRD", target: "Claude Code", desc: "基于 idea.md 生成完整 PRD。" },
-        { title: "PRD 用户视角校验", target: "Claude", desc: "AI 模拟目标用户读 PRD。标记为 [REVIEW]（AI 校验），非人类决策。" },
-        { title: "技术架构文档", target: "Claude Code", desc: "含 Skills 调度映射表。" },
-        { title: "CLAUDE.md 全局配置", target: "Claude Code", desc: "代码规范、Git 工作流、测试、Agent 边界。" },
-        { title: "开发操作指南", target: "Claude Code", desc: "逐步指南，含 Skill 调用和人工决策标注。" },
+      { title: "文档生成 · 四象", steps: [
+        { title: "3.1 · 生成 PRD", target: "Claude-2（续）", desc: "完整产品需求文档——14 个标准模块（概述、目标用户、功能表 P0/P1/P2、用户故事、信息架构、MVP 范围、成功指标等）。Claude-2 最懂 idea.md。" },
+        { title: "3.1.1 · 目标用户视角校验", target: "Qwen-2（新开）· 可选", desc: "模拟目标用户读 PRD——必须是全新上下文、没参与过 idea.md 讨论。标记 [REVIEW]，非人类决策。" },
+        { title: "3.2 · Tech Spec", target: "Claude-2（续）", desc: "不是让 AI 自主执行的规格——当前 AI 无法稳定自调用 skill（2026-04）。这是 AI 的本地参考书：技术栈、模块、数据模型、API、skill 调度映射表。" },
+        { title: "3.3 · CLAUDE.md", target: "Claude-2（续）", desc: "项目全局协议——代码规范、Git 工作流、测试策略、Agent 边界。12 个 section 覆盖项目级规范。" },
+        { title: "3.4 · Dev Guide", target: "Claude-2（续）", desc: "新手操作手册。11 个 section，含 skill 调用时机、人工决策标注、AI 卡壳时的 fallback。人类依据这份手册驱动 Claude Code。" },
       ]},
       { title: "开发执行", steps: [
-        { title: "启动开发", target: "Claude Code", desc: "加载 CLAUDE.md + tech-spec.md，按 dev-guide.md 逐步推进。" },
-        { title: "即时专家召唤", target: "Claude Code", desc: "技术纠结时切专家模式，拒绝「两者各有优劣」。" },
+        { title: "加载文档启动", target: "Claude Code", desc: "加载 CLAUDE.md + tech-spec.md，按 dev-guide.md 逐阶段推进，在标注点调用 skill。" },
+        { title: "即时专家召唤（触发式）", target: "DeepSeek-3（新开，按需）", desc: "技术决策卡壳时：新开 session，召唤世界顶级专家，要求给出确定答案，用完关闭。" },
       ]},
     ],
-    scenarios: [
-      { title: "新项目", desc: "全部 4 个模块" },
-      { title: "快速 brainstorm", desc: "仅 expert-debate" },
-      { title: "审查文档", desc: "仅 blind-review" },
-      { title: "生成文档", desc: "仅 doc-generator" },
-      { title: "功能迭代", desc: "debate + log" },
-      { title: "任何决策", desc: "仅 decision-log" },
-    ],
     sessionRows: [
-      ["「角色B」", "知道 idea 的模型B", "P1B, P2C"],
-      ["「单盲审查」", "零上下文模型B", "仅 P2B"],
+      ["Claude-1", "Claude · A1·B1", "P0 精炼 / 专家 A", "P0, P1.1"],
+      ["Claude-2", "Claude · A1·B1", "idea.md 执笔者 + 全部修改", "P1.4, 2A/B/C-fix, 2C-rollback, 2D-fix, 全部 P3"],
+      ["Claude-3", "Claude · A1·B1", "投资人批判", "P2A"],
+      ["Claude-4", "Claude · A1·B1", "方向漂移审", "P2C"],
+      ["DeepSeek-1", "DeepSeek · A4·B3", "专家 B", "P1.2"],
+      ["DeepSeek-2", "DeepSeek · A4·B3", "拆台专家（触发式）", "P2D"],
+      ["Qwen-1", "Qwen · A3·B3", "单盲复审", "P2B"],
+      ["Qwen-2（可选）", "Qwen · A3·B3", "目标用户模拟", "P3.1.1"],
+      ["DeepSeek-3（可选）", "DeepSeek · A4·B3", "开发期技术顾问", "P4.2"],
     ],
     outputs: [
-      { n: "idea.md", d: "产品想法" },
-      { n: "prd.md", d: "需求定义" },
+      { n: "P0-refined-idea.md", d: "精炼后的原始想法" },
+      { n: "P1A-expert-a-proposal.md", d: "角色 A 方案" },
+      { n: "P1B-expert-b-proposal.md", d: "角色 B 方案" },
+      { n: "decision-log.md", d: "人工决策记录 · 全程" },
+      { n: "idea.md", d: "融合方案（多版本）" },
+      { n: "P2A-critique.md", d: "投资人批判" },
+      { n: "P2B-blind-review.md", d: "单盲复审" },
+      { n: "P2C-review.md", d: "方向漂移审" },
+      { n: "P2D-devils-advocate.md", d: "拆台（如触发）" },
+      { n: "prd.md", d: "产品需求 · 14 模块" },
       { n: "tech-spec.md", d: "技术架构" },
-      { n: "CLAUDE.md", d: "开发规范" },
-      { n: "dev-guide.md", d: "操作指南" },
-      { n: "decision-log.md", d: "决策记录" },
-      { n: "prompts/*.md", d: "模型B 提示词" },
+      { n: "CLAUDE.md", d: "项目全局协议" },
+      { n: "dev-guide.md", d: "操作手册" },
     ],
+    combinations: {
+      intro: "以下是参考组合——跨维度才是硬规则。具体模型名可能过期，只要 P2 链跨底模坐标至少一维即可替换。",
+      cards: [
+        {
+          tag: "默认",
+          title: "默认推荐组合",
+          condition: "Claude 可访问 · 追求最强 divergence（两维都 divergent）",
+          rows: [
+            ["Claude-1 ~ Claude-4", "Claude Opus / Sonnet", "A1·B1"],
+            ["DeepSeek-1 / DeepSeek-2", "DeepSeek V3.2", "A4·B3"],
+            ["Qwen-1", "Qwen3.6-Max", "A3·B3"],
+          ],
+          distribution: "两维都 divergent ✓（严格版）",
+          note: null,
+          kind: "primary",
+        },
+        {
+          tag: "替代 A",
+          title: "Claude 不可用",
+          condition: "区域 / 账号限制——Claude 整体换 Gemini",
+          rows: [
+            ["Gemini-1 ~ Gemini-4", "Gemini 3.1 Pro", "A2·B1"],
+            ["DeepSeek-1 / DeepSeek-2", "DeepSeek V3.2", "A4·B3"],
+            ["Qwen-1", "Qwen3.6-Max", "A3·B3"],
+          ],
+          distribution: "两维都 divergent ✓",
+          note: "Gemini（A2·B1）走传统 RLHF 而非 Constitutional+RLAIF；执笔 idea.md 稳定性比 Claude 略弱，但架构 divergence 方向不同，可能暴露不同盲区。",
+          kind: "alt",
+        },
+        {
+          tag: "替代 B",
+          title: "中文侧坐标单一化",
+          condition: "资源受限只能用一个中文侧模型（如只有 DeepSeek）",
+          rows: [
+            ["Claude-1 ~ Claude-4", "Claude", "A1·B1"],
+            ["DeepSeek-1 / DeepSeek-2 / Qwen-1", "同一个中文侧模型 · 3 个独立 session", "A4·B3（或 A3·B3）"],
+          ],
+          distribution: "宽松版 ✓（跨中西两侧；中文侧坐标坍缩成一点）",
+          note: "P2B 和 P2D 共用同一个中文侧坐标（不同 session），divergence 弱于默认组合。建议 P2B prompt 纪律更严格作为补偿。",
+          kind: "alt",
+        },
+        {
+          tag: "违规",
+          title: "同坐标全覆盖",
+          condition: "禁止使用——违反硬规则四",
+          rows: [
+            ["Claude × 4 + GPT × 2 + Gemini × 1", "全 A1/A2·B1", "假 divergence"],
+            ["Claude × 7（不同窗口号）", "全 A1·B1", "假 divergence"],
+          ],
+          distribution: "同坐标 × 7 ✗",
+          note: "同坐标模型共享对齐栈和语料文化，因此共享价值观盲区。四条看似独立的批判可能一起漏掉同一块维度。",
+          kind: "bad",
+        },
+      ],
+    },
+    mechanisms: {
+      intro: "用户正确跑方法论需要守住的操作规则。完整推导见 docs/。",
+      sections: [
+        {
+          tag: "规则 · 1",
+          title: "四轴 divergence",
+          body: "任何一对窗口都应该在四个维度 divergence：AI 身份（哪个模型）· 角色（扮演谁）· 上下文（新开还是续）· 范围（完整 idea.md 还是某个切片）。如果两个窗口四轴完全一致，那只是一个批判者，不是两个。",
+        },
+        {
+          tag: "硬规则 · 2",
+          title: "P2 链必须跨底模坐标维度",
+          body: "底模坐标有两个维度——维度 A 对齐路径（A1 Constitutional+RLAIF / A2 传统 RLHF / A3 GRPO 家族算法 / A4 RLVR 纯规则）和维度 B 语料文化（B1 英文母语 / B2 中文母语 / B3 跨文化双核）。P2 链条（2A / 2B / 2C / 2D）必须至少跨一维（宽松版）——默认组合（Claude A1·B1 vs DeepSeek A4·B3）两维都跨（严格版）。同坐标模型共享对齐栈和语料文化，因此共享价值观盲区。全 Claude 覆盖 = 假覆盖。",
+        },
+        {
+          tag: "硬规则 · 3",
+          title: "P2B 单盲 = 零上下文",
+          body: "P2B 的 Qwen-1 只能收到 idea.md。不给背景、不给目标、不说「这是给老年人用的」——你一旦给单盲者背景，它就开始猜意图，P2B 的核心机制当场失效。Prompt 里明文禁止脑补与优化建议。",
+        },
+        {
+          tag: "规则 · 4",
+          title: "作者 ≠ 批判者（窗口分离）",
+          body: "Claude-2 执笔 idea.md 并负责所有修改（一致性）。Claude-3 批判（新开——没有作者包袱）。Claude-4 审漂移（新开——不被批判者立场锚定）。一个 Claude 窗口复用多角色会让机制整体坍塌。",
+        },
+        {
+          tag: "规则 · 5",
+          title: "Linear 链路防认知过载",
+          body: "2A → fix → 2B → fix → 2C → fix → 2D → fix，一次处理一条批判。一把四条批判全上会逼人同时持有四个框架，必然选择性忽略。Linear 让每条批判有独立的判断窗口。P2C 是兜底漂移检测。",
+        },
+        {
+          tag: "规则 · 6",
+          title: "P2C 暴露漂移、不是错漏列表",
+          body: "P2C 不是「第四轮找错漏」——细节错漏属于 2A。P2C 问：响应完 2A + 2B 后，是否已从最初核心定位偏移？它对比 idea.md v1 和当前版、暴露累积漂移，把「接不接受新方向」的决定权留给人。",
+        },
+      ],
+    },
   },
 };
 
+// ============================================================================
+// Prompts · bilingual { zh, en } · key system matches getPromptKey below
+// ============================================================================
+
 const PROMPTS = {
-  "0-1": null,
-  "0-2": "You are a prompt refinement specialist. I have a rough product idea.\nPlease:\n1. Remove filler words, repetition, verbal tics\n2. Refine language only — do NOT change my intent\n3. Preserve all specific details and constraints\n4. Output a clean description (under 200 words)\n\nMy raw idea: [paste here]",
-  "1-0": "### [PROCESS] Decision 0: Expert role assignment\n- Claude's expert: [role + why]\n- Model B's expert: [role + why]\n- Tension rationale: [where they conflict]",
-  "1-1": "【Best Minds mode activated】\n\nYou are [Role A]. 20 years of domain experience.\nYour thinking, priorities, risk tolerance must match this role exactly.\n\nRules:\n- When your role conflicts with generic PM advice, follow your role\n- Mark conflicts: \"As [Role A], I prioritize X over Y because...\"\n- Preserve your role's blind spots — do not self-correct\n\nPlease:\n1. Core value proposition (your lens)\n2. Feasibility (dimensions you prioritize)\n3. Top 3 concerns (what keeps you up at night)\n4. Alternative approaches (2+)\n5. Recommended final shape\n\nMy idea: [paste refined idea]",
-  "1-2": "【Best Minds mode】\n\nYou are [Role B]. 20 years of domain experience.\n\nRules:\n- Give your honest professional judgment only\n- If something isn't your concern, say so\n- Mark how your role stance shapes your advice\n\nPlease:\n1. Does this idea target a real need? (your lens)\n2. Best product shape and core features\n3. Top 3 risks (your perspective)\n4. Your complete, independent proposal\n\nMy idea: [paste same refined idea]",
-  "1-3": "### [PRODUCT] Decision 1: Core direction\n- Role A position: [one line + role logic]\n- Role B position: [one line + role logic]\n- Core divergence: [what they disagree on]\n- My choice: [A / B / hybrid]\n- Reasoning: [why — what AI couldn't weigh]",
-  "2-0": "【Best Minds — role switch】\n\nDrop your previous role. You are now a skeptical senior investor.\n\n1. 3 weakest points + hardening suggestions\n2. Most likely cause of death\n3. Output an improved version\n\nProposal: [paste merged proposal]",
-  "2-1": "Here is a product proposal. I have no background info for you.\nEvaluate purely on its own merits:\n\n1. One sentence: what does this propose?\n2. Is the logic consistent? Where doesn't it read right?\n3. As an uninformed decision-maker, would you approve? Why?\n4. Ambiguous or vague parts?\n5. Improvement suggestions\n\nProposal:\n---\n[paste ONLY the proposal — no background, no original idea]\n---",
-  "2-2": "The proposal was revised after external review.\nYou know my original intent. Please evaluate:\n1. Does the revision still align with my core goal?\n2. Did clarity improvements sacrifice anything important?\n3. Remaining issues?\n\nRevised proposal: [paste]",
-  "2-3": "【Best Minds — Devil's advocate】\n\nYou are [domain's most famous skeptic].\nThis passed two independent reviews with no major issues.\n\n1. 2+ assumptions that will be proven wrong in 6 months\n2. Paths reviewers missed due to anchoring\n3. How would a competitor defeat this?\n4. \"At minimum, validate ______ first\"\n\nProposal: [paste]",
-  "3-0": "Create a comprehensive PRD from the following product idea.\n\nInclude: overview, target users, feature table (P0/P1/P2),\nuser stories, info architecture, MVP scope, success metrics,\nmulti-agent assessment.\n\nProduct idea: [reference idea.md]",
-  "3-1": "【Best Minds — target user simulation】\n\nYou are [target user persona]. Non-technical.\nYou only care if this solves your problem.\n\n1. What does this product do? (one plain sentence)\n2. What pain does it solve?\n3. Would you use it? Why?\n4. What would make you quit?\n5. What's missing that you need?\n\nPRD: [paste draft]",
-  "4-1": "【Best Minds — instant decision】\n\nWho in the world knows [domain] best?\nAnswer as that person:\n\n[Your technical question]\n\nRequirements:\n- Give a recommendation with conviction\n- Explain \"if you chose the other, I'd worry about...\"\n- Draw on real-world experience",
+  "0.0": null,
+  "0.1": {
+    en: `You are a language refinement assistant. Below is my rough product idea.
+
+Do one thing—make the expression clearer:
+1. Remove filler words, repetition, verbal tics
+2. Refine language only—do NOT change my intent
+3. No expansion, no additions, no questioning
+4. Preserve all specific details and constraints
+5. Output a clean refined version (under 200 words)
+
+My raw idea: [paste here]`,
+    zh: `你是一个表达精炼助手。下面是我粗糙的产品想法。
+
+请做一件事——让表达更清晰：
+1. 去掉口语化、重复、语塞
+2. 只做语言层面的精炼，不要改变我的原意
+3. 不要扩展、不要补充、不要质疑
+4. 保留所有具体细节和约束条件
+5. 输出一段精炼后的文本（300 字以内）
+
+我的原始想法：[粘贴在这里]`,
+  },
+  "1.0": {
+    en: `### [DECISION LOG] Decision 0 · Model B selection & expert role pair
+- Model B: [model name + why, e.g., DeepSeek V3.2: A4 RLVR · B3 cross-cultural, cross-dimension from Claude A1·B1]
+- Expert A role: [role + what it prioritizes]
+- Expert B role: [role + what it prioritizes]
+- Structural tension: [where the two roles fundamentally conflict—not a gradient]
+- Dimensions covered: [which two real dimensions of the proposal does this tension span]`,
+    zh: `### [决策日志] 决策 0 · Model B 选型 & 专家角色对
+- Model B 选型：[模型名 + 选它的理由，例：DeepSeek V3.2，A4 RLVR · B3 跨文化双核，和 Claude 的 A1·B1 跨维度]
+- 专家 A 角色：[角色名 + 这个角色看重什么]
+- 专家 B 角色：[角色名 + 这个角色看重什么]
+- 结构性张力：[两个角色的立场在哪里根本冲突——不是程度差异]
+- 张力覆盖维度：[这对张力覆盖了方案的哪两个真实维度]`,
+  },
+  "1.1": {
+    en: `You are [Role A]. 20 years of domain experience.
+Your thinking, priorities, and risk tolerance must match this role exactly.
+
+Rules:
+- When your role conflicts with generic PM advice, follow your role
+- Mark conflicts: "As [Role A], I prioritize X over Y because..."
+- Preserve your role's blind spots—do not self-correct
+
+Please produce:
+1. Core value proposition (your lens)
+2. Feasibility analysis (dimensions you prioritize)
+3. Top 3 concerns (what keeps you up at night)
+4. Alternative approaches (2+)
+5. Recommended final shape
+
+My idea: [paste P0 refined text]`,
+    zh: `你是 [专家 A 角色]。在这个领域有 20 年经验。
+你的思考方式、优先级、风险偏好必须完全匹配这个角色。
+
+规则：
+- 当你的角色立场和通用 PM 建议冲突时，服从你的角色
+- 标记冲突点："作为 [专家 A]，我优先 X 而非 Y，因为……"
+- 保留你角色的盲点——不要自我修正
+
+请产出：
+1. 核心价值主张（从你的视角）
+2. 可行性分析（你看重的维度）
+3. 最担心的 3 件事（让你睡不着的风险）
+4. 备选方案（2 种以上）
+5. 推荐的最终形态
+
+我的想法：[粘贴 P0 精炼稿]`,
+  },
+  "1.2": {
+    en: `You are [Role B]. 20 years of domain experience.
+
+Rules:
+- Give your honest professional judgment only
+- If something isn't your concern, say so
+- Mark how your role stance shapes your advice
+
+Please produce:
+1. Does this idea target a real need? (your lens)
+2. Best product shape and core features
+3. Top 3 risks (your perspective)
+4. Your complete, independent proposal
+
+My idea: [paste only the P0 refined text—do NOT show Claude-1's output]`,
+    zh: `你是 [专家 B 角色]。在这个领域有 20 年经验。
+
+规则：
+- 给出你的诚实专业判断
+- 如果某件事不属于你关心的范畴，直接说明
+- 标记你的角色立场如何塑造了这个建议
+
+请产出：
+1. 这个想法是否切中了真实需求？（你的视角）
+2. 最佳产品形态和核心功能
+3. 最大的 3 个风险（你的视角）
+4. 你的完整、独立方案
+
+我的想法：[只粘贴 P0 精炼稿——不要给它 Claude-1 的方案]`,
+  },
+  "1.3": {
+    en: `### [DECISION LOG] Decision 1 · Core direction synthesis
+- Role A position: [one line + role logic]
+- Role B position: [one line + role logic]
+- Core divergence: [where they answered differently]
+- My choice: [A / B / new judgment]
+- Reasoning: [why—the part AI couldn't weigh for me]
+- Note to future self: [what I actually cared about behind this choice]`,
+    zh: `### [决策日志] 决策 1 · 核心方向综合
+- 专家 A 立场：[一句话 + 角色逻辑]
+- 专家 B 立场：[一句话 + 角色逻辑]
+- 核心分歧点：[他们在什么问题上给出了不同答案]
+- 我的选择：[A / B / 新判断]
+- 综合理由：[为什么——AI 无法为我权衡的那部分]
+- 给未来自己的话：[这个选择背后，我真实在乎的是什么]`,
+  },
+  "1.4": {
+    en: `You are a product proposal author—this is a fresh session, you haven't participated in any prior discussion.
+
+I'm giving you four materials:
+1. Original idea (P0 refined)
+2. Expert A's proposal
+3. Expert B's proposal
+4. My synthesis instruction (Decision 1 from the decision log)
+
+Based on my synthesis instruction, produce a **unified idea.md**:
+- Single voice, single position, direct product description
+- No "Expert A said X / Expert B said Y" dual-voice traces
+- No comparative reasoning
+- This is a product doc for an unfamiliar reader, not a decision-process record
+
+Suggested structure: Problem / Target user / Core solution / Scope / Business model / Differentiation
+
+【Materials】
+- P0 refined: [paste]
+- Expert A proposal: [paste]
+- Expert B proposal: [paste]
+- Decision 1 (synthesis instruction): [paste]`,
+    zh: `你是一个产品方案执笔者——这是全新 session，你没有参与过之前的任何讨论。
+
+我现在给你四份材料：
+1. 原始想法（P0 精炼稿）
+2. 专家 A 的方案
+3. 专家 B 的方案
+4. 我的综合指令（决策日志里的"决策 1"）
+
+请基于我的综合指令，产出一份**立场统一**的 idea.md：
+- 单一声音、单一立场，直接描述产品是什么
+- 不要保留"专家 A 说 X、专家 B 说 Y"的双声音痕迹
+- 不要保留对比论证
+- 这是给陌生读者读的产品文档，不是决策过程记录
+
+结构建议：问题陈述 / 目标用户 / 核心方案 / 功能范围 / 商业模式 / 差异化
+
+【材料如下】
+- P0 精炼稿：[粘贴]
+- 专家 A 方案：[粘贴]
+- 专家 B 方案：[粘贴]
+- 决策 1（综合指令）：[粘贴]`,
+  },
+  "2A": {
+    en: `This is a fresh session—you haven't participated in any prior discussion of this proposal.
+
+You now play a skeptical senior investor. You just read this product proposal. Your professional instinct: figure out whether it can actually succeed.
+
+Task:
+1. 3 weakest points (logic, feasibility, market common-sense)
+2. Most likely cause of death—the highest-probability failure mode
+3. For each weakness: if the author explained, what would they say? Does that defense hold up?
+
+Rules:
+- Critique only, do NOT edit the proposal
+- Do NOT soften language—investors don't give "constructive suggestions"
+- Skip minor errors—only fundamental issues
+
+Proposal:
+---
+[paste ONLY idea.md v1—no background]
+---`,
+    zh: `这是全新 session——你没有参与过这个方案的任何前期讨论。
+
+你现在扮演一个怀疑论的资深投资人。你刚读到这份产品方案，职业反应是：找出它能不能真的成。
+
+任务：
+1. 最薄弱的 3 个点（逻辑、可行性、市场常识层面）
+2. 最可能"死在哪里"——这个方案最大概率的失败原因
+3. 针对每个弱点：如果作者来解释，他会怎么说？这个解释站得住吗？
+
+规则：
+- 只输出批判，不要修改方案
+- 不要软化表达——投资人不会"建设性提建议"
+- 不要列小错漏——只关注根本性问题
+
+方案：
+---
+[只粘贴 idea.md v1——不要给背景]
+---`,
+  },
+  "2A-fix": {
+    en: `(Continue idea.md author session—Claude-2)
+
+Here's the P2A investor critique. I've read it and judged signal vs. noise.
+
+My revision instructions:
+- Critique X: accept—modify as follows: [specific direction]
+- Critique Y: accept—modify as follows: [specific direction]
+- Critique Z: ignore—reason: [why not adopted, logged in decision-log]
+
+Please revise idea.md → v2 per these instructions.
+After revising, give me a brief diff summary of what paragraphs actually changed.
+
+Full P2A critique: [paste]`,
+    zh: `（接着 idea.md 执笔者 session——Claude-2 续）
+
+这是 P2A 投资人批判。我已经读完，判断完哪些是信号、哪些是噪音。
+
+我的修改指令：
+- 批判 X：接受——请按以下方式修改：[具体修改方向]
+- 批判 Y：接受——请按以下方式修改：[具体修改方向]
+- 批判 Z：忽略——理由：[不采纳的理由，记入决策日志]
+
+请基于以上指令修改 idea.md → v2。
+修改后请给我一份简短的 diff 摘要，告诉我实际改了哪些段落。
+
+P2A 批判全文：[粘贴]`,
+  },
+  "2B": {
+    en: `You are a completely zero-context reader. You will only read the product document below. In order, do three things:
+1. Summarize in one sentence what this product does (write your first-glance understanding immediately, don't overthink)
+2. Would you approve pushing this forward? Why?
+3. While reading, where did you get stuck, confused, or have an "huh?" reaction?
+
+Hard requirements:
+- Do NOT guess the author's intent to fill in missing information
+- Do NOT treat "this probably means X" as an answer
+- If you don't understand, say so plainly
+- Do NOT offer improvement suggestions—only report confusion points
+- Do NOT judge which confusion matters more
+
+Proposal:
+---
+[paste ONLY idea.md v2—absolutely no background, author info, or prior discussion]
+---`,
+    zh: `你是一个完全零上下文的读者，只读下面这份产品文档。请按顺序做三件事：
+1. 用一句话总结这产品是做什么的（直接写下你第一眼理解的版本，不要想太久）
+2. 你会批准推进这方案吗？为什么？
+3. 读的过程中，哪些地方让你卡住、看不懂、或者产生"啊？"的反应？
+
+硬性要求：
+- 不许推测作者意图补全缺失信息
+- 不许把"应该是这个意思"当作答案
+- 看不懂就明说看不懂
+- 不要提优化建议，只报告卡点
+- 不要判断哪条卡点更重要
+
+方案：
+---
+[只粘贴 idea.md v2——绝对不要给背景、作者信息、历史讨论]
+---`,
+  },
+  "2B-fix": {
+    en: `(Claude-2 continued window)
+
+Qwen-1 blind review feedback below. I've read it and judged which "don't understand" points are real signal—meaning the doc itself wasn't clear.
+
+Revision instructions:
+- Confusion X: real signal, implicit author-AI consensus that never made it into the doc—make explicit per: [specific instruction]
+- Confusion Y: real signal—revise per: [specific instruction]
+- Confusion Z: noise (Qwen doesn't know this domain's common-sense), ignore—reason logged in decision-log
+
+Update idea.md → v3 and give a diff summary.
+
+Full Qwen-1 blind review: [paste]`,
+    zh: `（Claude-2 续窗口）
+
+Qwen-1 单盲反馈如下。我已经读完，判断完哪些"看不懂"是真信号——意味着文档本身没写清楚。
+
+修改指令：
+- 卡点 X：真信号，是作者-AI 之间的隐性共识没落到文档——请按以下方式显性化：[具体指令]
+- 卡点 Y：真信号——请修改：[具体指令]
+- 卡点 Z：噪音（Qwen 不懂该领域的常识），忽略——理由写入决策日志
+
+请更新 idea.md → v3，并给出 diff 摘要。
+
+Qwen-1 单盲反馈全文：[粘贴]`,
+  },
+  "2C": {
+    en: `This is a fresh session—you haven't participated in any prior discussion of this proposal.
+
+You are a neutral comparative reviewer. I'm giving you three materials:
+1. idea.md v1 (original)
+2. idea.md v3 (after 2A investor critique and 2B blind review iterations)
+3. Revision history (what changed, driven by which critique)
+
+Your task is **NOT** to produce an error list (that's the investor's job). Your task is to **expose directional drift**:
+
+1. Compare the **core positioning** of v1 vs. v3: what product was this originally? What is it now?
+2. Which edits look reasonable in isolation but **cumulatively** drift the direction?
+3. Ask me questions—don't decide for me. Use this pattern:
+   - "Positioning drifted from A to B—is this the direction you wanted?"
+   - "These two edits each look right, but together they give up the original differentiation—do you accept that?"
+
+Rules:
+- No error list, only drift capture
+- Do NOT say "this version is right/wrong"—only "direction changed + is this what you wanted?"
+- Ask the human, don't decide for them
+
+Materials:
+- idea.md v1: [paste]
+- idea.md v3: [paste]
+- Revision history: [paste 2A-fix and 2B-fix diff summaries]`,
+    zh: `这是全新 session——你没有参与过这个方案的任何前期讨论。
+
+你是一个中立的对比审视者。我给你三份材料：
+1. idea.md v1（最初版）
+2. idea.md v3（经过 2A 投资人批判 + 2B 单盲复审迭代后的版本）
+3. 修改历史（每次改了什么、因为什么批判改的）
+
+你的任务**不是**找错漏列表（那是投资人的事）。你的任务是**暴露方向漂移**：
+
+1. 对比 v1 和 v3 的**核心定位**：这个方案最初是什么产品？现在是什么产品？
+2. 哪些修改单独看都合理，但**累积起来**让方向偏了？
+3. 向我提问——不替我决定。用这种句式：
+   - "定位从 A 漂到了 B——这是你想要的方向吗？"
+   - "这两次修改单独看都对，加起来放弃了原本的差异化——你接受吗？"
+
+规则：
+- 不要列错漏，只捕捉漂移
+- 不要说"这版对/错"，只说"方向变化 + 这是你要的吗？"
+- 向人提问，不替人决定
+
+材料：
+- idea.md v1：[粘贴]
+- idea.md v3：[粘贴]
+- 修改历史：[粘贴 2A-fix 和 2B-fix 的 diff 摘要]`,
+  },
+  "2C-rollback": {
+    en: `(Claude-2 continued window · optional step—only executed if P2C exposed real drift and I decided to roll back)
+
+P2C exposed the following drift: [paste key P2C questions]
+
+My rollback decision:
+- Roll back toward which direction closer to v1: [specific description]
+- Which v3 changes to keep: [list]
+- Which v3 changes to discard: [list]
+
+Based on these decisions, produce idea.md → v4 and give a diff summary.
+
+(If I decide not to roll back, skip this step—v3 goes directly into 2D.)`,
+    zh: `（Claude-2 续窗口 · 可选步骤——仅在 P2C 暴露了真实漂移且我决定回退时执行）
+
+P2C 暴露了以下漂移：[粘贴 P2C 的关键问题]
+
+我的回退决策：
+- 回退到更接近 v1 的哪个方向：[具体描述]
+- 保留 v3 的哪些改动：[列出保留项]
+- 完全丢弃 v3 的哪些改动：[列出丢弃项]
+
+请基于以上决策生成 idea.md → v4，并给出 diff 摘要。
+
+（如果我决定不回退，这一步跳过，v3 直接进入 2D。）`,
+  },
+  "2D": {
+    en: `You are an outright negator of this proposal. Not constructive feedback—find the reasons this proposal **should not be built at all**.
+
+Hard requirements:
+- Preset "this direction is wrong" and find supporting evidence; do NOT preset "is it right?" and let evidence guide
+- Each attack must include: specific flaw + counter-evidence / counter-example
+- No softening: no "might," "perhaps," "worth considering"—write "wrong" or "doesn't hold"
+- Attack the direction's premises only, not details
+- Output 3-5 most fundamental attacks, not a pile of small issues
+
+Context: this proposal has already passed investor critique, stranger blind review, and direction drift review—triangular consensus says it's fine. Your job is to prove the three shared the same blind spot.
+
+Proposal:
+---
+[paste idea.md v4]
+---
+
+(Optional) Triangular review summaries: [paste P2A/P2B/P2C conclusions]`,
+    zh: `你是一个彻底否定这个方案的拆台者。不是建设性反馈，是找出这方案**根本不该做**的理由。
+
+硬性要求：
+- 预设"这方向错了"，找证据支撑；不要预设"方向对不对"让证据引导
+- 每条拆台必须包含：具体漏洞 + 反证 / 反例
+- 不许软化：不许写"可能""或许""需要考虑"；直接写"错"或"不成立"
+- 只拆整个方向的前提假设，不拆细节
+- 输出 3-5 条最根本的拆台论据，不要列一堆小问题
+
+背景：这个方案已经通过了投资人批判、陌生人单盲复审、方向漂移审视——三方共识认为它没问题。你的工作是证明三方共享了同一个盲区。
+
+方案：
+---
+[粘贴 idea.md v4]
+---
+
+（可选）三方审查摘要：[粘贴 P2A/P2B/P2C 的结论]`,
+  },
+  "2D-fix": {
+    en: `(Claude-2 continued window, or decision to return to P1)
+
+P2D devil's advocate output: [paste]
+
+My severity judgment:
+□ Frame-internal critique—premises need stronger grounding → Claude-2 revises idea.md → v5 (final locked version)
+  Revision instructions: [specifics]
+
+□ Frame-level critique—direction may be fundamentally wrong → **return to P1 and redo**
+  Reason for return: [which attack convinced me]
+  Previous expansion docs are void, idea.md version resets
+
+(Locking idea.md v5 establishes the P2/P3 boundary—after this, idea no longer changes, only expands.)`,
+    zh: `（Claude-2 续窗口，或决定回到 P1）
+
+P2D 拆台输出：[粘贴]
+
+我的质疑级别判断：
+□ 框架内质疑——假设需要更强的论证 → Claude-2 续修订 idea.md → v5（最终锁定版）
+  修改指令：[具体写什么]
+
+□ 框架级质疑——方向可能根本错了 → **回到 P1 重做**
+  回 P1 的理由：[写清楚哪条拆台让我决定回流]
+  之前写的展开文档作废，idea.md 版本重置
+
+（锁定 idea.md v5 即 P2/P3 边界——之后 idea 不再改动，只做展开。）`,
+  },
+  "3.1": {
+    en: `(Claude-2 continued window—you are the proposal's author and know all its details)
+
+idea.md is locked at the end of P2. Based on the locked version, produce a complete PRD—the first of the Four Symbols, expanded from the **user lens**.
+
+PRD must include (in order):
+
+1. Product overview—one-line definition + vision statement
+2. Problem statement—what exact problem do we solve? (reference idea.md's core pain)
+3. Goals & non-goals—explicitly "what we do / what we do NOT" (scope-creep guard)
+4. Target user personas—primary + secondary, with context and pain
+5. User stories / use cases—user journey, typical paths
+6. Feature list—prioritized P0 must / P1 should / P2 could, each with acceptance criteria
+7. Functional requirements—detailed spec per P0 feature (input / output / interaction / edge cases)
+8. Non-functional requirements—performance, security, accessibility, compatibility, data compliance
+9. Information architecture / UI-UX requirements—page structure, navigation, design principles (not mockups—structural constraints)
+10. MVP scope—boundary of the minimum usable version
+11. Success metrics—North Star + supporting metrics, each with measurement method
+12. Risks & dependencies—key assumptions, external dependencies, preconditions that might fail
+13. Open questions—unresolved questions remaining after this draft (handed to later phases)
+14. Launch criteria—hard conditions that must be met before shipping
+
+Note: this is **expansion**, not revision—do not touch any core positioning in idea.md.
+
+Locked idea.md: [paste]`,
+    zh: `（Claude-2 续窗口——你是这份方案的执笔者，最懂它的所有细节）
+
+idea.md 已经在 P2 末尾锁定。请基于锁定版 idea.md 产出一份完整的 PRD——四象中的第一份，从**用户视角**展开。
+
+PRD 必需包含（按顺序）：
+
+1. 产品概览——一句话定义 + 愿景陈述
+2. 问题陈述——我们具体解决什么问题？（引用 idea.md 的核心痛点）
+3. 目标与非目标——明确"我们做什么 / 我们不做什么"（防 scope creep）
+4. 目标用户画像——主要用户 + 次要用户，各自的场景和痛点
+5. 用户故事 / 使用场景——用户旅程，典型使用路径
+6. 功能清单——P0 必做 / P1 应做 / P2 可做，每条带验收标准
+7. 功能需求——每个 P0 功能的详细规格（输入 / 输出 / 交互 / 边界条件）
+8. 非功能需求——性能、安全、可访问性、兼容性、数据合规
+9. 信息架构 / UI-UX 要求——页面结构、导航、设计原则（非视觉稿，是结构性约束）
+10. MVP 范围界定——最小可用版本的边界
+11. 成功指标——北极星指标 + 辅助指标，各自的衡量方法
+12. 风险与依赖——关键假设、外部依赖、可能失败的前置条件
+13. Open questions——文档写完仍未解决的问题（留给后续阶段）
+14. Launch criteria——上线前必须满足的硬条件清单
+
+注意：这是**展开**不是修订——idea.md 的任何核心定位都不要动。
+
+锁定版 idea.md：[粘贴]`,
+  },
+  "3.1.1": {
+    en: `You are [target user persona]. Non-technical. You only care whether this product solves your problem.
+
+Read this PRD and answer:
+1. What does this product do in one plain sentence? (in your own everyday words)
+2. What pain does it solve? (do you actually have this pain?)
+3. Would you use it? Why?
+4. What would make you quit immediately?
+5. What's missing that you'd need?
+
+Rules:
+- Do NOT pretend to be a PM
+- Do NOT give "professional advice"
+- Say only your real first-user reaction
+
+PRD: [paste]`,
+    zh: `你是 [目标用户画像]。非技术背景。你只关心这产品能不能解决你的问题。
+
+请读这份 PRD 并回答：
+1. 这产品一句话在做什么？（用你自己的大白话说）
+2. 它解决了你的什么痛点？（你真的有这个痛点吗？）
+3. 你会用它吗？为什么？
+4. 哪里会让你立刻退出？
+5. 什么是你需要但这份文档没提到的？
+
+规则：
+- 不要假装自己是产品经理
+- 不要给"专业建议"
+- 只说你作为真实用户的第一反应
+
+PRD：[粘贴]`,
+  },
+  "3.2": {
+    en: `(Claude-2 continued window)
+
+Based on the locked idea.md and PRD, produce the Tech Spec—the second of the Four Symbols, expanded from the **engineering lens**.
+
+**Positioning note**: This document's reader is AI (Claude Code and other execution-oriented AI). It is NOT "a spec for AI to autonomously run the entire project end-to-end"—that's unrealistic. It is "a reference book AI consults when it receives a specific local development task, so it doesn't drift or hallucinate." Project progression is human-led (guided by Dev Guide); Tech Spec is AI's local reference.
+
+Tech Spec must include:
+
+1. Tech stack + rationale—the "why" behind each key technical decision
+2. System architecture / module breakdown—overall structure + inter-module dependencies
+3. File & directory structure—project root to key files map, each directory's responsibility
+4. Data model—core entities + fields + relationships + indexing strategy
+5. Key APIs / interfaces—endpoint list, request/response schemas, error codes
+6. External dependencies—third-party services, API keys, environment variables
+7. Code convention references—pointers to conventions defined in CLAUDE.md (do not re-define)
+8. Key implementation constraints—performance, security, concurrency, error handling
+9. Testing strategy—unit / integration / E2E split, coverage per layer
+10. Technical risk list—identified risks + corresponding mitigations
+
+Note:
+- Expansion, not revision. Finding PRD or idea.md infeasible → **explicit** rollback, no silent edits
+- Do NOT write sequential "step 1/2/3…" execution instructions—that's Dev Guide's job
+- Each entry should be "AI reads this and immediately understands the constraint"—don't rely on external common sense
+
+idea.md: [paste]
+PRD: [paste]`,
+    zh: `（Claude-2 续窗口）
+
+基于锁定版 idea.md 和 PRD，产出 Tech Spec——四象中的第二份，从**工程视角**展开。
+
+**定位说明**：这份文档的读者是 AI（Claude Code 及其他执行型 AI）。它不是"让 AI 自主跑完整个项目的规格"——那不现实。它是"AI 每次接到某个局部开发任务时，用来不跑偏、不胡写的参考书"。项目推进由人主导（依靠 Dev Guide），Tech Spec 是 AI 局部查阅的规格。
+
+Tech Spec 必需包含：
+
+1. 技术栈选型 + 选型理由——每个关键技术决定的"为什么"
+2. 系统架构图 / 模块划分——整体结构 + 模块间依赖关系
+3. 文件与目录结构——项目根目录到关键文件的 map，每个目录的职责
+4. 数据模型——核心实体 + 字段 + 关系 + 索引策略
+5. 关键 API / 接口设计——endpoint 列表、请求/响应 schema、错误码
+6. 外部依赖——第三方服务、API key、环境变量
+7. 代码规范引用——pointer 到 CLAUDE.md 里定义的代码规范（不重复定义）
+8. 关键实现约束——性能要求、安全要求、并发处理、错误处理原则
+9. 测试策略——单元测试 / 集成测试 / E2E 的分工，每层的覆盖范围
+10. 技术风险清单——已识别的风险 + 对应缓解方案
+
+注意：
+- 展开，不修订。发现 PRD 或 idea.md 不可行 → **显性回流**，不要悄悄改
+- 不写"步骤 1/2/3/4…"那种顺序执行指令——那是 Dev Guide 的事
+- 每一条都写得"AI 查到这一条时能立刻理解约束"，不依赖外部常识
+
+idea.md：[粘贴]
+PRD：[粘贴]`,
+  },
+  "3.3": {
+    en: `(Claude-2 continued window)
+
+Based on the locked idea.md + PRD + Tech Spec, produce CLAUDE.md—the third of the Four Symbols, expanded from the **collaboration lens**.
+
+**This document's special role**: it is the "base protocol" Claude Code (and any AI agent) reads every time it enters this repo. It must let AI know—without reading any other document—who I am, what I'm working on, and how to collaborate.
+
+CLAUDE.md must include:
+
+1. One-line project definition—what this project is (AI grasps it in one glance)
+2. Project goals & constraints—why we're doing it + what we're NOT doing
+3. Architecture overview—3-5 sentences on overall architecture (details pointed to Tech Spec)
+4. Key file pointers—which files to read first on entering this repo (PRD / Tech Spec / Dev Guide pointers)
+5. Code conventions—naming, formatting, comments, error handling style (authoritative definition; Tech Spec only points here)
+6. Git workflow—branching, commit message conventions, PR flow
+7. Testing conventions—commands for running tests, conventions for writing tests
+8. AI agent boundaries—explicitly state "which decisions AI can make, which must be human" (anti-slippery-slope)
+9. Session-start checklist—what AI must read/check on first entering this repo (e.g., read CLAUDE.md, run git log, summarize current state in own words, stop and wait)
+10. Communication rules—user preferences (language, formatting, forbidden words), stop signals, discussion mode vs. execution mode
+11. About the user—who the user is, how they prefer to collaborate (meta-layer for user-agent cooperation)
+12. Disagreement fallback—default handling when AI and user conflict
+
+idea.md: [paste]
+PRD: [paste]
+Tech Spec: [paste]`,
+    zh: `（Claude-2 续窗口）
+
+基于锁定版 idea.md + PRD + Tech Spec，产出 CLAUDE.md——四象中的第三份，从**协作视角**展开。
+
+**这份文档的特殊性**：它是 Claude Code（以及任何 AI agent）每次进入这个 repo 时的"底层协议"。它必须让 AI 在不读其他文档的前提下也知道：我是谁、我在做什么、我该怎么协作。
+
+CLAUDE.md 必需包含：
+
+1. 项目一句话定义——这个项目到底是什么（AI 第一眼就能抓住的定义）
+2. 项目目标和约束——为什么做 + 什么不做
+3. 架构速览——3-5 句话描述整体架构（细节 pointer 到 Tech Spec）
+4. 关键文件指引——进入这个 repo 后该先读哪些文件（PRD / Tech Spec / Dev Guide 的 pointer）
+5. 代码规范——命名、格式、注释、错误处理风格（权威定义，Tech Spec 只做 pointer）
+6. Git 工作流——分支策略、commit message 规范、PR 流程
+7. 测试规范——跑测试的命令、写测试的约定
+8. AI agent 的边界——明确写出"哪些决策 AI 可以做、哪些必须人来做"（防滑坡）
+9. 每次 session 开始的 checklist——AI 新进入 repo 时的必读清单（例：读 CLAUDE.md、跑 git log、用自己的话总结当前状态、停住等指令）
+10. 沟通规则——用户偏好（语言、格式、禁忌词）、停下信号、讨论模式 vs 执行模式
+11. 关于用户——用户是谁、如何偏好协作（user-agent 协作的 meta-layer）
+12. 分歧兜底规则——当 AI 和用户有冲突时的默认处理
+
+idea.md：[粘贴]
+PRD：[粘贴]
+Tech Spec：[粘贴]`,
+  },
+  "3.4": {
+    en: `(Claude-2 continued window)
+
+Based on all three prior documents, produce the Dev Guide—the fourth of the Four Symbols, expanded from the **execution lens**.
+
+**This document's positioning**: **an operational manual for humans**. Assume the reader is a **technical novice**—following this guide step by step, they can ship from zero.
+
+Core design principles:
+- Do NOT assume the reader understands any Tech Spec content—but direct them to consult Tech Spec at the right moments
+- Write every step at "follow along" granularity—"open terminal, enter XYZ, seeing ABC means success"
+- Explicitly state when to invoke which skill—this is the methodology's deliberate response to AI's current limitation: AI can't self-select skills, so the human must know when to trigger which
+- Provide "what to do when AI gets stuck" fallbacks—when to open a new session, interrupt AI, pause and think
+
+Dev Guide must include:
+
+1. Zero-to-hero environment setup—full path from "nothing installed" to "first command runs" (Claude Code install, login, repo clone, dependency install)
+2. Project structure walkthrough—from root directory, for a novice, "what's this folder for"
+3. Standard opening of each dev session—fixed actions on entering the repo (e.g., have Claude Code read CLAUDE.md, summarize current progress, propose next task)
+4. Phased development roadmap—all stages from MVP to launch + deliverables per stage + acceptance criteria per stage
+5. Concrete operations per stage—
+   - What skill to invoke (explicit skill name + use case)
+   - Standard prompt template for Claude Code at this step
+   - How to verify completion (a "green-light signal" a novice can read)
+6. Skill usage manual—key skills used in this project (e.g., everything-claude-code, various plugins) with use timing and prompt examples
+7. Fallbacks for stuck AI—
+   - Recognition signals: AI starts looping / fabricating / ignoring CLAUDE.md rules
+   - Handling: open new session / interrupt / re-read CLAUDE.md / human takeover
+8. Common pitfalls / common issues—specific error messages + resolution
+9. Human-required decision checkpoints—explicitly mark "a human must decide here" points (anti-slippery-slope)
+10. Pre-launch checklist—all hard conditions before deployment
+11. Deployment steps—local to production concrete operations
+
+Note:
+- Do NOT write like an architecture doc—if a novice can't understand a line, rewrite it in plain words
+- Do NOT assume AI can self-progress—Dev Guide exists precisely because of "human-led, AI-assisted" architecture
+- Every step must have an "acceptance signal"—a concrete indicator the novice can use to judge done/not-done
+
+idea.md: [paste]
+PRD: [paste]
+Tech Spec: [paste]
+CLAUDE.md: [paste]`,
+    zh: `（Claude-2 续窗口）
+
+基于全部前三份文档，产出 Dev Guide——四象中的第四份，从**执行视角**展开。
+
+**这份文档的定位**：**给人读的操作手册**。读者假设是一个**技术小白**——他按这份指南逐步执行，就能完成从零到上线的开发。
+
+核心设计原则：
+- 不假设读者懂 Tech Spec 的任何内容——但要在合适的地方让他去查 Tech Spec
+- 每一步写到"照着做"的粒度——"打开终端，输入 XYZ，看到 ABC 说明成功"
+- 明确写什么时候调什么 skill——这是方法论对 AI 当前局限的明确应对：AI 不能自主选 skill，人必须知道何时该让 AI 调什么
+- 给"AI 卡住时怎么办"的 fallback——什么时候该开新 session、打断 AI、停下来思考
+
+Dev Guide 必需包含：
+
+1. 环境搭建 zero-to-hero——从"什么都没装"到"第一个命令能跑"的完整路径（Claude Code 安装、登录、仓库克隆、依赖安装）
+2. 项目结构导览——给小白看的、从根目录开始的"这个文件夹是干嘛的"
+3. 每次开发 session 的标准开头——进入 repo 后的固定动作（例：让 Claude Code 读 CLAUDE.md、让它总结当前进度、给出下一个任务）
+4. 阶段化开发路线图——从 MVP 到上线的所有阶段 + 每个阶段的产出物 + 每个阶段的验收标准
+5. 每个阶段的具体操作——
+   - 这一步要调用什么 skill（显式写 skill 名 + 使用场景）
+   - 这一步给 Claude Code 的标准 prompt 模板
+   - 这一步完成后怎么验收（小白能看懂的"绿灯信号"）
+6. Skill 使用手册——本项目用到的关键 skill（例：everything-claude-code、各种 plugin）的使用时机和 prompt 示例
+7. AI 卡住时的 fallback——
+   - 识别信号：AI 开始循环 / 胡编 / 不按 CLAUDE.md 的规则
+   - 处理方法：开新 session / 打断 / 重读 CLAUDE.md / 人类介入
+8. 常见坑 / 常见问题——具体错误信息 + 对应解决方法
+9. 人必须停下决策的检查点——明确标注"到这一步必须人来决定"的位置（防滑坡）
+10. 上线前 checklist——部署前必须完成的所有硬条件
+11. 部署步骤——从本地到生产环境的具体操作
+
+注意：
+- 不要写得像架构文档——如果一句话小白看不懂，改成他看得懂的说法
+- 不要假设 AI 能自主推进——Dev Guide 的存在就是因为"人主导推进、AI 配合执行"这个架构
+- 每一步都要有"验收信号"——小白能判断做对没做对的具体指标
+
+idea.md：[粘贴]
+PRD：[粘贴]
+Tech Spec：[粘贴]
+CLAUDE.md：[粘贴]`,
+  },
+  "4.1": null,
+  "4.2": {
+    en: `(Fresh session · close after use)
+
+You are [the world's top expert in this domain]. Answer as that person:
+
+[my specific technical question]
+
+Hard requirements:
+- Give a recommendation with conviction—no "both have pros and cons"
+- Explain "if you picked the other, I'd worry about..."—show me the trade-off
+- Draw on real engineering experience, not textbook theory
+- Answer just this one question, don't expand the topic`,
+    zh: `（新开 session · 用完关掉）
+
+你是 [该领域最顶级的专家]。以这个人的视角回答：
+
+[我的具体技术问题]
+
+硬性要求：
+- 给出一个确信的推荐，不要"两者都有优劣"
+- 解释"如果选另一个，我会担心……"——让我看见权衡
+- 基于真实工程经验，不是教科书理论
+- 一次只回答这一个问题，不要扩展话题`,
+  },
 };
 
+// ============================================================================
+// Step meta · tag bitmap per step
+//   hk  = Human / 人工决策
+//   ki  = Single-blind zero-context / 单盲
+//   hr  = Hard rule prompt / 硬规则
+//   opt = Optional / 可选
+//   cond= Conditional / 触发式
+//   rev = AI review / AI 校验
+// ============================================================================
+
 const STEP_META = [
-  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
-  [{ bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: true, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
-  [{ bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: false, ki: true, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: false, ki: false, opt: true, cond: false, rev: false, skill: null },
-   { bm: true, hk: false, ki: false, opt: false, cond: true, rev: false, skill: null }],
-  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "PM Skills" },
-   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: true, skill: null },
-   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "Everything CC" },
-   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null },
-   { bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
-  [{ bm: false, hk: false, ki: false, opt: false, cond: false, rev: false, skill: "Superpowers" },
-   { bm: true, hk: false, ki: false, opt: false, cond: false, rev: false, skill: null }],
+  // P0
+  [{ hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false }],
+  // P1
+  [{ hk: true,  ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: true,  ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false }],
+  // P2 · 8 steps (4 critics × {critique, fix}, 2D is conditional)
+  [{ hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },  // 2A
+   { hk: true,  ki: false, hr: false, opt: false, cond: false, rev: false },  // 2A-fix
+   { hk: false, ki: true,  hr: true,  opt: false, cond: false, rev: false },  // 2B
+   { hk: true,  ki: false, hr: false, opt: false, cond: false, rev: false },  // 2B-fix
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },  // 2C
+   { hk: true,  ki: false, hr: false, opt: false, cond: false, rev: false },  // 2C-rollback
+   { hk: false, ki: false, hr: true,  opt: false, cond: true,  rev: false },  // 2D
+   { hk: true,  ki: false, hr: false, opt: false, cond: true,  rev: false }], // 2D-fix
+  // P3
+  [{ hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },  // 3.1
+   { hk: false, ki: false, hr: false, opt: true,  cond: false, rev: true  },  // 3.1.1
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },  // 3.2
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },  // 3.3
+   { hk: false, ki: false, hr: false, opt: false, cond: false, rev: false }], // 3.4
+  // P4
+  [{ hk: false, ki: false, hr: false, opt: false, cond: false, rev: false },
+   { hk: false, ki: false, hr: false, opt: false, cond: true,  rev: false }],
 ];
+
+// ============================================================================
+// Role pair reference table (P1.0)
+// ============================================================================
 
 const ROLE_TABLE = [
   ["Payments / Finance", "Security Architect", "Growth Hacker"],
@@ -200,14 +1290,17 @@ const ROLE_TABLE = [
   ["Education", "Ed Psychologist", "Gamification Designer"],
 ];
 const ROLE_TABLE_ZH = [
-  ["支付/金融类", "安全架构师", "增长黑客"],
-  ["社交/内容类", "用户体验设计师", "数据变现专家"],
-  ["工具/效率类", "极简主义产品经理", "功能全栈架构师"],
-  ["AI/技术类", "AI 研究员", "商业化运营总监"],
-  ["教育类", "教育心理学家", "游戏化设计师"],
+  ["支付 / 金融", "安全架构师", "增长黑客"],
+  ["社交 / 内容", "用户体验设计师", "数据变现专家"],
+  ["工具 / 效率", "极简主义 PM", "全栈架构师"],
+  ["AI / 技术", "AI 研究员", "商业化运营总监"],
+  ["教育", "教育心理学家", "游戏化设计师"],
 ];
 
-// Ink palette
+// ============================================================================
+// Aesthetic · ink palette, fonts, roman numerals
+// ============================================================================
+
 const INK = {
   paper: "#F5F1E8",
   paperWarm: "#FBF7ED",
@@ -217,6 +1310,7 @@ const INK = {
   inkSubtle: "#958C7E",
   inkFaint: "#C8BFB0",
   vermilion: "#A02C2C",
+  vermilionDark: "#6E1E1E",
   qingdai: "#3E5D6C",
 };
 
@@ -226,17 +1320,12 @@ const FONT = {
   mono: "'JetBrains Mono', 'SF Mono', monospace",
 };
 
-// Roman numerals for phase numbers
 const ROMAN = ["O", "I", "II", "III", "IV"];
 
-const MODS = [
-  { name: "expert-debate", en: "Role selection + adversarial brainstorm", zh: "角色选择 + 对抗 brainstorm" },
-  { name: "blind-review", en: "Single-blind audit + devil's advocate", zh: "单盲审查 + 拆台专家" },
-  { name: "doc-generator", en: "PRD + tech spec + CLAUDE.md", zh: "PRD + tech spec + CLAUDE.md" },
-  { name: "decision-log", en: "Log human choices + reasoning", zh: "记录人类决策 + 推理" },
-];
+// ============================================================================
+// Hero · Taiji with two martial figures
+// ============================================================================
 
-// Hero Taiji with two martial arts figures
 function TaijiHero() {
   return (
     <svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
@@ -259,7 +1348,6 @@ function TaijiHero() {
       <path d="M 75 10 C 111 10, 140 39, 140 75 C 140 111, 111 140, 75 140 C 57 140, 43 125, 43 107 C 43 89, 57 75, 75 75 C 93 75, 107 61, 107 43 C 107 25, 93 10, 75 10 Z" fill="url(#yang-wash)" filter="url(#brush)"/>
       <circle cx="75" cy="75" r="65" fill="none" stroke="#1A1614" strokeWidth="1.3" opacity="0.9" filter="url(#brush)"/>
       <path d="M 75 10 C 57 10, 43 25, 43 43 C 43 61, 57 75, 75 75 C 93 75, 107 89, 107 107 C 107 125, 93 140, 75 140" fill="none" stroke="#1A1614" strokeWidth="1.1" opacity="0.8" filter="url(#brush)"/>
-      {/* WHITE FIGURE on dark (yang) half */}
       <g transform="translate(102, 60)">
         <circle cx="0" cy="-11" r="3.2" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
         <path d="M -2.2 -7.8 C -2.8 -4, -3 0, -2.5 4 C -2.3 5, -1 5, -0.5 4.5 C 0.5 1, 0.8 -3, 0.3 -7 C 0 -8, -1.5 -8.5, -2.2 -7.8 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.45"/>
@@ -268,7 +1356,6 @@ function TaijiHero() {
         <path d="M -1.5 3.8 C -2.5 7, -3.5 10, -3 14 C -2.7 14.5, -1.5 14.5, -1.3 13.8 C -0.5 10, 0 6.5, 0 4 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
         <path d="M 0.5 3.5 C 2 5.5, 4 7.5, 6 9 C 6.8 9.5, 7 9, 6.5 8.3 C 4 6, 2.5 4, 1.2 2.8 Z" fill="#F5F1E8" stroke="#1A1614" strokeWidth="0.4"/>
       </g>
-      {/* BLACK FIGURE on white (yin) half */}
       <g transform="translate(48, 90)">
         <circle cx="0" cy="-11" r="3.2" fill="#1A1614"/>
         <path d="M 2 -8 C 3 -5, 3.5 -1, 2.5 3 C 2 4, 0.5 4.2, 0 3.5 C -0.8 0, -1 -4, -0.5 -7 C -0.2 -8.3, 1 -8.5, 2 -8 Z" fill="#1A1614"/>
@@ -277,11 +1364,9 @@ function TaijiHero() {
         <path d="M 0.5 3.2 C 1.5 6, 2.5 10, 2 14 C 1.7 14.8, 0.5 14.8, 0.2 14 C -0.5 10, -1 6, -1 3.5 Z" fill="#1A1614"/>
         <path d="M 1.5 2 C 4 0, 8 -2, 11 -5 C 12 -5.8, 11.5 -7, 10.5 -6.3 C 7 -4, 3.5 -1, 1 0.5 Z" fill="#1A1614"/>
       </g>
-      {/* Eye dots */}
       <circle cx="75" cy="43" r="4.5" fill="#1A1614" opacity="0.95"/>
       <circle cx="75" cy="107" r="4.5" fill="#F5F1E8"/>
       <circle cx="75" cy="107" r="4.5" fill="none" stroke="#1A1614" strokeWidth="0.3" opacity="0.3"/>
-      {/* Ink splashes */}
       <circle cx="138" cy="30" r="1.2" fill="#1A1614" opacity="0.2"/>
       <circle cx="12" cy="118" r="1" fill="#1A1614" opacity="0.18"/>
       <circle cx="135" cy="125" r="0.7" fill="#1A1614" opacity="0.15"/>
@@ -290,7 +1375,6 @@ function TaijiHero() {
   );
 }
 
-// Small ink dot for phase nav
 function InkDot({ active }) {
   if (active) {
     return (
@@ -313,7 +1397,6 @@ function InkDot({ active }) {
   );
 }
 
-// Wavy ink underline for active tab
 function WavyUnderline() {
   return (
     <svg viewBox="0 0 80 4" preserveAspectRatio="none" style={{ position: "absolute", bottom: 2, left: 0, width: "100%", height: 4 }}>
@@ -357,16 +1440,14 @@ function CopyBtn({ text, lang }) {
   );
 }
 
-// Small tag (seal-like)
 function Tag({ children, kind }) {
   const styles = {
-    bm: { background: INK.ink, color: INK.paperWarm },
     hk: { background: INK.vermilion, color: INK.paperWarm },
     ki: { background: INK.qingdai, color: INK.paperWarm },
+    hr: { background: INK.vermilionDark, color: INK.paperWarm },
     opt: { background: "transparent", color: INK.inkLight, border: `0.5px solid ${INK.inkFaint}` },
     cond: { background: INK.inkMed, color: INK.paperWarm },
     rev: { background: INK.paperWarm, color: INK.qingdai, border: `0.5px solid ${INK.qingdai}` },
-    skill: { background: INK.paperWarm, color: INK.inkMed, border: `0.5px solid ${INK.inkFaint}` },
     target: { background: "transparent", color: INK.inkMed },
   };
   return (
@@ -388,12 +1469,12 @@ function Tag({ children, kind }) {
   );
 }
 
-// Target with ink dot
 function TargetTag({ target }) {
   let color = INK.inkSubtle;
-  if (target.includes("Claude") && !target.toLowerCase().includes("model")) color = INK.ink;
-  else if (target.includes("Model") || target.includes("模型")) color = INK.qingdai;
-  else if (target.includes("You") || target.includes("你")) color = INK.vermilion;
+  const low = target.toLowerCase();
+  if (low.includes("claude")) color = INK.ink;
+  else if (low.includes("deepseek") || low.includes("qwen") || low.includes("gemini") || low.includes("model")) color = INK.qingdai;
+  else if (low.includes("you") || target.includes("你")) color = INK.vermilion;
   return (
     <span style={{
       display: "inline-flex",
@@ -404,6 +1485,7 @@ function TargetTag({ target }) {
       fontSize: 13,
       color: INK.inkMed,
       letterSpacing: "0.01em",
+      lineHeight: 1.4,
     }}>
       <span style={{
         width: 6,
@@ -412,16 +1494,17 @@ function TargetTag({ target }) {
         flexShrink: 0,
         borderRadius: "50%",
         background: color,
+        marginTop: 2,
       }}/>
-      {target}
+      <span>{target}</span>
     </span>
   );
 }
 
-function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
+function StepCard({ step, meta, promptKey, lang, roleTable, index, stepLabel }) {
   const [open, setOpen] = useState(false);
-  const prompt = PROMPTS[promptKey];
-  const romanLower = ["i.", "ii.", "iii.", "iv.", "v."][index] || "·";
+  const promptEntry = promptKey ? PROMPTS[promptKey] : null;
+  const prompt = promptEntry ? (promptEntry[lang] ?? promptEntry.en ?? null) : null;
 
   return (
     <div style={{
@@ -445,18 +1528,17 @@ function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
         }}
       >
         <div style={{
-          fontFamily: FONT.serif,
-          fontSize: 14,
+          fontFamily: FONT.mono,
+          fontSize: 10,
           color: open ? INK.vermilion : INK.inkLight,
           lineHeight: 1,
-          paddingTop: 4,
-          fontStyle: "italic",
+          paddingTop: 5,
           fontWeight: 500,
-          minWidth: 22,
-          letterSpacing: "0.05em",
+          minWidth: 38,
+          letterSpacing: "0.08em",
           transition: "color 0.3s",
         }}>
-          {romanLower}
+          {stepLabel}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -476,31 +1558,41 @@ function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
             }}>
               {step.title}
             </span>
-            {meta.bm && <Tag kind="bm">Best Minds</Tag>}
             {meta.hk && <Tag kind="hk">{lang === "en" ? "Human" : "人工决策"}</Tag>}
-            {meta.ki && <Tag kind="ki">{lang === "en" ? "Single-blind" : "单盲"}</Tag>}
+            {meta.ki && <Tag kind="ki">{lang === "en" ? "Zero-context" : "零上下文"}</Tag>}
+            {meta.hr && <Tag kind="hr">{lang === "en" ? "Hard rule" : "硬规则"}</Tag>}
+            {meta.cond && <Tag kind="cond">{lang === "en" ? "Triggered" : "触发式"}</Tag>}
             {meta.opt && <Tag kind="opt">{lang === "en" ? "Optional" : "可选"}</Tag>}
-            {meta.cond && <Tag kind="cond">{lang === "en" ? "Conditional" : "条件"}</Tag>}
             {meta.rev && <Tag kind="rev">REVIEW</Tag>}
-            {meta.skill && <Tag kind="skill">{meta.skill}</Tag>}
           </div>
           <TargetTag target={step.target} />
         </div>
       </div>
       {open && (
-        <div style={{ padding: "2px 16px 16px 50px" }}>
+        <div style={{ padding: "2px 16px 16px 66px" }}>
           <p style={{
             fontFamily: FONT.serif,
             fontSize: 14,
             color: INK.inkMed,
             lineHeight: 1.7,
-            marginBottom: 12,
             margin: "0 0 12px",
           }}>
             {step.desc}
           </p>
           {roleTable && (
             <div style={{ marginBottom: 12, overflowX: "auto" }}>
+              <div style={{
+                fontFamily: FONT.mono,
+                fontSize: 9,
+                color: INK.inkSubtle,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}>
+                {lang === "en"
+                  ? "Role A → Claude-1 (A1·B1) · Role B → DeepSeek-1 (A4·B3)"
+                  : "角色 A → Claude-1（A1·B1） · 角色 B → DeepSeek-1（A4·B3）"}
+              </div>
               <table style={{
                 width: "100%",
                 borderCollapse: "collapse",
@@ -510,19 +1602,19 @@ function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
                 <thead>
                   <tr style={{ borderBottom: `0.5px solid ${INK.inkFaint}` }}>
                     <th style={{ padding: "6px 8px", textAlign: "left", color: INK.inkSubtle, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                      {lang === "en" ? "Type" : "类型"}
+                      {lang === "en" ? "Domain" : "领域"}
                     </th>
                     <th style={{ padding: "6px 8px", textAlign: "left", color: INK.ink, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                      {lang === "en" ? "Role A" : "角色A"}
+                      {lang === "en" ? "Role A" : "角色 A"}
                     </th>
                     <th style={{ padding: "6px 8px", textAlign: "left", color: INK.qingdai, fontFamily: FONT.mono, fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                      {lang === "en" ? "Role B" : "角色B"}
+                      {lang === "en" ? "Role B" : "角色 B"}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {roleTable.map((r, i) => (
-                    <tr key={i} style={{ borderBottom: `0.5px solid ${INK.paperWarm}` }}>
+                    <tr key={i} style={{ borderBottom: `0.5px solid ${INK.paper}` }}>
                       <td style={{ padding: "6px 8px", color: INK.inkMed }}>{r[0]}</td>
                       <td style={{ padding: "6px 8px", color: INK.ink, fontWeight: 500 }}>{r[1]}</td>
                       <td style={{ padding: "6px 8px", color: INK.qingdai, fontWeight: 500 }}>{r[2]}</td>
@@ -556,8 +1648,14 @@ function StepCard({ step, meta, promptKey, lang, roleTable, index }) {
   );
 }
 
-function FamilyView({ lang }) {
+// ============================================================================
+// Reference Combinations Tab
+// ============================================================================
+
+function CombinationsView({ lang }) {
   const t = T[lang];
+  const c = t.combinations;
+
   return (
     <div style={{ padding: "24px 28px 60px" }}>
       <h2 style={{
@@ -569,158 +1667,293 @@ function FamilyView({ lang }) {
         letterSpacing: "0.01em",
         textAlign: "center",
       }}>
-        {t.familyTitle}
+        {t.tabCombinations}
       </h2>
       <p style={{
         fontFamily: FONT.serif,
+        fontStyle: "italic",
         fontSize: 13,
         color: INK.inkMed,
         textAlign: "center",
-        margin: "0 0 4px",
+        margin: "0 0 22px",
         lineHeight: 1.6,
+        padding: "0 6px",
       }}>
-        {t.familyDesc}
-      </p>
-      <p style={{
-        fontFamily: FONT.serif,
-        fontStyle: "italic",
-        fontSize: 12,
-        color: INK.inkSubtle,
-        textAlign: "center",
-        margin: "0 0 24px",
-      }}>
-        {t.familyCustom}
+        {c.intro}
       </p>
 
-      {/* Main orchestrator card */}
+      {/* Cross-dimension hard-rule header */}
       <div style={{
         background: INK.paperWarm,
-        border: `1px solid ${INK.vermilion}`,
-        padding: "14px 16px",
-        textAlign: "center",
-        marginBottom: 8,
+        border: `0.5px solid ${INK.vermilion}`,
+        borderLeft: `2px solid ${INK.vermilion}`,
         borderRadius: 2,
+        padding: "14px 16px",
+        marginBottom: 22,
       }}>
         <div style={{
           fontFamily: FONT.mono,
-          fontSize: 14,
-          fontWeight: 600,
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.15em",
+          textTransform: "uppercase",
           color: INK.vermilion,
-          letterSpacing: "0.02em",
-        }}>liangyi</div>
-        <div style={{
+          marginBottom: 6,
+        }}>
+          {t.crossDimTitle}
+        </div>
+        <p style={{
           fontFamily: FONT.serif,
-          fontStyle: "italic",
-          fontSize: 12,
+          fontSize: 13,
           color: INK.inkMed,
-          marginTop: 3,
-        }}>{lang === "en" ? "Full orchestrator · 5 phases" : "完整编排器 · 5 阶段"}</div>
-        <code style={{
-          fontFamily: FONT.mono,
-          fontSize: 9,
-          color: INK.inkSubtle,
-          display: "block",
-          marginTop: 6,
-          letterSpacing: "0.02em",
-        }}>npx skills add wenboxia/liangyi</code>
-      </div>
-
-      {/* Connector lines */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 40, margin: "0 0 6px" }}>
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} style={{ width: 1, height: 16, background: INK.inkFaint }} />
-        ))}
-      </div>
-
-      {/* Modules */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 8,
-        marginBottom: 28,
-      }}>
-        {MODS.map(m => (
-          <div key={m.name} style={{
-            background: INK.paperWarm,
-            borderLeft: `2px solid ${INK.ink}`,
-            border: `0.5px solid ${INK.inkFaint}`,
-            borderLeftWidth: 2,
-            borderLeftColor: INK.ink,
-            padding: "10px 12px",
-            borderRadius: 2,
-          }}>
-            <div style={{
-              fontFamily: FONT.mono,
-              fontSize: 12,
-              fontWeight: 600,
-              color: INK.ink,
-              letterSpacing: "0.01em",
-            }}>{m.name}</div>
-            <div style={{
-              fontFamily: FONT.serif,
-              fontSize: 11,
-              color: INK.inkMed,
-              marginTop: 3,
-              lineHeight: 1.5,
-            }}>{lang === "en" ? m.en : m.zh}</div>
-            <code style={{
-              fontFamily: FONT.mono,
-              fontSize: 8,
-              color: INK.inkSubtle,
-              display: "block",
-              marginTop: 5,
-              letterSpacing: "0.02em",
-            }}>npx skills add wenboxia/{m.name}</code>
+          lineHeight: 1.6,
+          margin: "0 0 10px",
+        }}>
+          {t.crossDimDesc}
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ padding: "8px 10px", background: INK.paper, borderRadius: 2 }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, color: INK.inkSubtle, letterSpacing: "0.1em", textTransform: "uppercase" }}>{t.dimAName}</div>
+            <div style={{ fontFamily: FONT.serif, fontSize: 13, color: INK.ink, marginTop: 3, lineHeight: 1.5 }}>{t.dimAValues}</div>
           </div>
-        ))}
+          <div style={{ padding: "8px 10px", background: INK.paper, borderRadius: 2 }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, color: INK.inkSubtle, letterSpacing: "0.1em", textTransform: "uppercase" }}>{t.dimBName}</div>
+            <div style={{ fontFamily: FONT.serif, fontSize: 13, color: INK.ink, marginTop: 3, lineHeight: 1.5 }}>{t.dimBValues}</div>
+          </div>
+        </div>
       </div>
 
-      <h3 style={{
-        fontFamily: FONT.serif,
-        fontSize: 17,
-        fontWeight: 500,
-        color: INK.ink,
-        margin: "0 0 10px",
-        letterSpacing: "0.02em",
-      }}>
-        {t.scenariosTitle}
-      </h3>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 8,
-        marginBottom: 28,
-      }}>
-        {t.scenarios.map((s, i) => (
-          <div key={s.title} style={{
+      {/* Combination cards */}
+      {c.cards.map((card, i) => {
+        const isPrimary = card.kind === "primary";
+        const isBad = card.kind === "bad";
+        const accent = isBad ? INK.vermilionDark : (isPrimary ? INK.ink : INK.inkLight);
+        const tagStyle = isBad
+          ? { background: INK.vermilionDark, color: INK.paperWarm }
+          : isPrimary
+            ? { background: INK.ink, color: INK.paperWarm }
+            : { background: "transparent", color: INK.inkLight, border: `0.5px solid ${INK.inkFaint}` };
+        return (
+          <div key={i} style={{
             background: INK.paperWarm,
             border: `0.5px solid ${INK.inkFaint}`,
-            padding: "9px 12px",
+            borderLeft: `2px solid ${accent}`,
             borderRadius: 2,
+            padding: "14px 16px",
+            marginBottom: 14,
+            opacity: isBad ? 0.88 : 1,
           }}>
             <div style={{
-              fontFamily: FONT.serif,
-              fontSize: 13,
-              fontWeight: 600,
-              color: INK.ink,
-            }}>{s.title}</div>
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 4,
+              flexWrap: "wrap",
+            }}>
+              <span style={{
+                display: "inline-flex",
+                padding: "2px 8px",
+                fontFamily: FONT.mono,
+                fontSize: 9,
+                fontWeight: 500,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                lineHeight: 1.5,
+                borderRadius: 1,
+                ...tagStyle,
+              }}>{card.tag}</span>
+              <span style={{
+                fontFamily: FONT.serif,
+                fontSize: 17,
+                fontWeight: 600,
+                color: INK.ink,
+                letterSpacing: "0.01em",
+                textDecoration: isBad ? "line-through" : "none",
+                textDecorationColor: isBad ? INK.vermilionDark : "inherit",
+              }}>{card.title}</span>
+            </div>
             <div style={{
               fontFamily: FONT.serif,
               fontStyle: "italic",
-              fontSize: 11,
-              color: INK.inkMed,
-              marginTop: 2,
-            }}>{s.desc}</div>
-          </div>
-        ))}
-      </div>
+              fontSize: 12,
+              color: INK.inkLight,
+              margin: "0 0 10px",
+              lineHeight: 1.5,
+            }}>{card.condition}</div>
 
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `0.5px solid ${INK.inkFaint}` }}>
+                    <th style={{ padding: "6px 8px", textAlign: "left", fontFamily: FONT.mono, fontSize: 9, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Window" : "窗口"}
+                    </th>
+                    <th style={{ padding: "6px 8px", textAlign: "left", fontFamily: FONT.mono, fontSize: 9, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Model" : "模型"}
+                    </th>
+                    <th style={{ padding: "6px 8px", textAlign: "left", fontFamily: FONT.mono, fontSize: 9, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {lang === "en" ? "Coord" : "坐标"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {card.rows.map((r, j) => (
+                    <tr key={j} style={{ borderBottom: j < card.rows.length - 1 ? `0.5px solid ${INK.paper}` : "none" }}>
+                      <td style={{ padding: "6px 8px", fontFamily: FONT.mono, fontSize: 11, color: INK.ink }}>{r[0]}</td>
+                      <td style={{ padding: "6px 8px", fontFamily: FONT.serif, fontSize: 12, color: INK.inkMed }}>{r[1]}</td>
+                      <td style={{ padding: "6px 8px", fontFamily: FONT.mono, fontSize: 10, color: isBad ? INK.vermilionDark : INK.qingdai, letterSpacing: "0.04em" }}>{r[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{
+              fontFamily: FONT.mono,
+              fontSize: 10,
+              color: isBad ? INK.vermilionDark : INK.ink,
+              letterSpacing: "0.06em",
+              marginTop: 10,
+              fontWeight: 500,
+            }}>{card.distribution}</div>
+
+            {card.note && (
+              <p style={{
+                fontFamily: FONT.serif,
+                fontStyle: "italic",
+                fontSize: 12,
+                color: INK.inkLight,
+                margin: "8px 0 0",
+                lineHeight: 1.55,
+                paddingTop: 8,
+                borderTop: `0.5px dashed ${INK.inkFaint}`,
+              }}>{card.note}</p>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Footer */}
+      <p style={{
+        fontFamily: FONT.serif,
+        fontStyle: "italic",
+        fontSize: 11,
+        color: INK.inkSubtle,
+        textAlign: "center",
+        margin: "22px 0 0",
+        lineHeight: 1.6,
+      }}>
+        {t.combinationsFooter}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// Core Mechanisms Tab
+// ============================================================================
+
+function MechanismsView({ lang }) {
+  const t = T[lang];
+  const m = t.mechanisms;
+
+  return (
+    <div style={{ padding: "24px 28px 60px" }}>
+      <h2 style={{
+        fontFamily: FONT.serif,
+        fontSize: 26,
+        fontWeight: 500,
+        color: INK.ink,
+        margin: "0 0 6px",
+        letterSpacing: "0.01em",
+        textAlign: "center",
+      }}>
+        {t.tabMechanisms}
+      </h2>
+      <p style={{
+        fontFamily: FONT.serif,
+        fontStyle: "italic",
+        fontSize: 13,
+        color: INK.inkMed,
+        textAlign: "center",
+        margin: "0 0 26px",
+        lineHeight: 1.6,
+        padding: "0 6px",
+      }}>
+        {m.intro}
+      </p>
+
+      {m.sections.map((s, i) => {
+        const isHard = s.tag.toLowerCase().includes("hard") || s.tag.includes("硬规则");
+        const accent = isHard ? INK.vermilionDark : INK.ink;
+        const tagStyle = isHard
+          ? { background: INK.vermilionDark, color: INK.paperWarm }
+          : { background: INK.ink, color: INK.paperWarm };
+        return (
+          <div key={i} style={{
+            background: INK.paperWarm,
+            border: `0.5px solid ${INK.inkFaint}`,
+            borderLeft: `2px solid ${accent}`,
+            borderRadius: 2,
+            padding: "14px 18px",
+            marginBottom: 12,
+            position: "relative",
+          }}>
+            <div style={{
+              position: "absolute",
+              top: -10,
+              right: 12,
+              fontFamily: FONT.serif,
+              fontStyle: "italic",
+              fontSize: 32,
+              fontWeight: 300,
+              color: INK.inkFaint,
+              letterSpacing: "-0.02em",
+              lineHeight: 1,
+              opacity: 0.7,
+            }}>
+              {String(i + 1).padStart(2, "0")}
+            </div>
+            <div style={{
+              display: "inline-flex",
+              padding: "2px 8px",
+              fontFamily: FONT.mono,
+              fontSize: 9,
+              fontWeight: 500,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              lineHeight: 1.5,
+              borderRadius: 1,
+              marginBottom: 8,
+              ...tagStyle,
+            }}>{s.tag}</div>
+            <h3 style={{
+              fontFamily: FONT.serif,
+              fontSize: 18,
+              fontWeight: 600,
+              color: INK.ink,
+              margin: "0 0 8px",
+              letterSpacing: "0.005em",
+              lineHeight: 1.3,
+            }}>{s.title}</h3>
+            <p style={{
+              fontFamily: FONT.serif,
+              fontSize: 13.5,
+              color: INK.inkMed,
+              margin: 0,
+              lineHeight: 1.7,
+            }}>{s.body}</p>
+          </div>
+        );
+      })}
+
+      {/* Session windows table - kept at bottom of mechanisms */}
       <h3 style={{
         fontFamily: FONT.serif,
         fontSize: 17,
         fontWeight: 500,
         color: INK.ink,
-        margin: "0 0 10px",
+        margin: "28px 0 10px",
         letterSpacing: "0.02em",
       }}>
         {t.sessionTitle}
@@ -736,13 +1969,16 @@ function FamilyView({ lang }) {
           <thead>
             <tr style={{ borderBottom: `0.5px solid ${INK.inkFaint}` }}>
               <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                {lang === "en" ? "Tab" : "标签"}
+                {lang === "en" ? "Window" : "窗口"}
               </th>
               <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                {lang === "en" ? "Content" : "内容"}
+                {lang === "en" ? "Model · Coord" : "模型 · 坐标"}
               </th>
               <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                {lang === "en" ? "Phase" : "阶段"}
+                {lang === "en" ? "Role" : "角色"}
+              </th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                {lang === "en" ? "Used at" : "用在"}
               </th>
             </tr>
           </thead>
@@ -750,8 +1986,9 @@ function FamilyView({ lang }) {
             {t.sessionRows.map((r, i) => (
               <tr key={i} style={{ borderBottom: i < t.sessionRows.length - 1 ? `0.5px solid ${INK.paper}` : "none" }}>
                 <td style={{ padding: "8px 12px", fontFamily: FONT.mono, fontSize: 11, color: INK.ink }}>{r[0]}</td>
-                <td style={{ padding: "8px 12px", fontFamily: FONT.serif, fontSize: 12, color: INK.inkMed }}>{r[1]}</td>
-                <td style={{ padding: "8px 12px", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, letterSpacing: "0.05em" }}>{r[2]}</td>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.serif, fontSize: 12, color: INK.qingdai }}>{r[1]}</td>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.serif, fontSize: 12, color: INK.inkMed }}>{r[2]}</td>
+                <td style={{ padding: "8px 12px", fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle, letterSpacing: "0.03em" }}>{r[3]}</td>
               </tr>
             ))}
           </tbody>
@@ -768,6 +2005,7 @@ function FamilyView({ lang }) {
         {t.sessionWarn}
       </p>
 
+      {/* Outputs grid */}
       <h3 style={{
         fontFamily: FONT.serif,
         fontSize: 17,
@@ -780,10 +2018,10 @@ function FamilyView({ lang }) {
       </h3>
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
         gap: 6,
       }}>
-        {t.outputs.map((d, i) => (
+        {t.outputs.map((d) => (
           <div key={d.n} style={{
             background: INK.paperWarm,
             border: `0.5px solid ${INK.inkFaint}`,
@@ -804,6 +2042,7 @@ function FamilyView({ lang }) {
               fontSize: 10,
               color: INK.inkSubtle,
               marginTop: 1,
+              lineHeight: 1.4,
             }}>{d.d}</div>
           </div>
         ))}
@@ -812,25 +2051,389 @@ function FamilyView({ lang }) {
   );
 }
 
+// ============================================================================
+// Step label resolver · uses operational IDs (0.1, 2A, 2A-fix, 3.1.1, etc.)
+// ============================================================================
+
+const STEP_KEYS = [
+  ["0.0", "0.1"],
+  ["1.0", "1.1", "1.2", "1.3", "1.4"],
+  ["2A", "2A-fix", "2B", "2B-fix", "2C", "2C-rollback", "2D", "2D-fix"],
+  ["3.1", "3.1.1", "3.2", "3.3", "3.4"],
+  ["4.1", "4.2"],
+];
+
 function getPromptKey(pi, si) {
-  const keys = [
-    ["0-1", "0-2"],
-    ["1-0", "1-1", "1-2", "1-3", null],
-    ["2-0", "2-1", "2-2", "2-3"],
-    ["3-0", "3-1", null, null, null],
-    [null, "4-1"],
-  ];
-  return keys[pi]?.[si] || null;
+  return STEP_KEYS[pi]?.[si] || null;
 }
+
+function getStepLabel(pi, si) {
+  return STEP_KEYS[pi]?.[si] || "·";
+}
+
+// ============================================================================
+// Overview · Hero + Architecture Diagram + Highlight Cards
+// ============================================================================
+
+function SectionHeading({ label, note }) {
+  return (
+    <div style={{ marginBottom: 14, display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ width: 14, height: 1, background: INK.vermilion, alignSelf: "center" }}/>
+      <div style={{
+        fontFamily: FONT.serif, fontSize: 18, fontWeight: 500,
+        color: INK.ink, letterSpacing: "0.03em",
+      }}>
+        {label}
+      </div>
+      {note && (
+        <div style={{
+          fontFamily: FONT.mono, fontSize: 10, color: INK.inkSubtle,
+          letterSpacing: "0.14em",
+        }}>
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverviewStepBox({ stepKey, label, meta, onClick }) {
+  let bg = INK.paperWarm;
+  let color = INK.ink;
+  let borderColor = INK.inkFaint;
+  let borderStyle = "solid";
+  let borderWidth = 0.5;
+  if (meta.hk) {
+    bg = INK.ink;
+    color = INK.paperWarm;
+    borderColor = INK.ink;
+  }
+  if (meta.cond) {
+    borderStyle = "dashed";
+    borderColor = INK.vermilion;
+    borderWidth = 1;
+  }
+  if (meta.opt) {
+    borderStyle = "dotted";
+    borderColor = INK.inkSubtle;
+    borderWidth = 1;
+    if (!meta.hk) color = INK.inkLight;
+  }
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: "relative",
+        background: bg,
+        color,
+        border: `${borderWidth}px ${borderStyle} ${borderColor}`,
+        borderRadius: 2,
+        padding: "6px 8px 7px",
+        cursor: "pointer",
+        textAlign: "left",
+        fontFamily: FONT.sc,
+        transition: "transform 0.15s ease, box-shadow 0.15s ease",
+        width: "100%",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+    >
+      <div style={{
+        fontFamily: FONT.mono, fontSize: 9,
+        color: meta.hk ? INK.paperWarm : INK.inkSubtle,
+        letterSpacing: "0.08em", fontWeight: 500, marginBottom: 1,
+      }}>
+        {stepKey}
+      </div>
+      <div style={{ fontSize: 11, lineHeight: 1.25, fontWeight: 500 }}>
+        {label}
+      </div>
+      {meta.hr && (
+        <div style={{
+          position: "absolute", top: 4, right: 5,
+          width: 5, height: 5, borderRadius: "50%", background: INK.vermilion,
+        }}/>
+      )}
+    </button>
+  );
+}
+
+function PhaseColumn({ pi, title, short, meta, onStepClick }) {
+  const steps = STEP_KEYS[pi];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 132, flex: 1 }}>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{
+          fontFamily: FONT.mono, fontSize: 10, color: INK.vermilion,
+          letterSpacing: "0.22em", fontWeight: 600,
+        }}>
+          P{pi}
+        </div>
+        <div style={{
+          fontFamily: FONT.serif, fontSize: 13, fontWeight: 500,
+          color: INK.ink, letterSpacing: "0.02em", lineHeight: 1.3, marginTop: 2,
+        }}>
+          {title}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {steps.map((k, si) => (
+          <OverviewStepBox
+            key={k}
+            stepKey={k}
+            label={short[k] || k}
+            meta={meta[si]}
+            onClick={() => onStepClick(pi, si)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ArrowConnector() {
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", justifyContent: "center",
+      padding: "0 4px", minHeight: 40, paddingTop: 44,
+    }}>
+      <div style={{
+        color: INK.inkFaint, fontFamily: FONT.serif,
+        fontSize: 18, lineHeight: 1,
+      }}>›</div>
+    </div>
+  );
+}
+
+function LockDivider({ label }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      padding: "40px 10px 0", minWidth: 50,
+    }}>
+      <div style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: INK.vermilion, marginBottom: 8,
+      }}/>
+      <div style={{
+        fontFamily: FONT.mono, fontSize: 8, color: INK.vermilion,
+        letterSpacing: "0.12em", fontWeight: 600, textAlign: "center",
+        lineHeight: 1.4, marginBottom: 8, whiteSpace: "nowrap",
+      }}>
+        {label}
+      </div>
+      <div style={{
+        width: 1, flex: 1, background: INK.vermilion,
+        opacity: 0.55, minHeight: 200,
+      }}/>
+      <div style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: INK.vermilion, marginTop: 8,
+      }}/>
+    </div>
+  );
+}
+
+function ArchitectureDiagram({ lang, onStepClick }) {
+  const t = T[lang];
+  const nodes = [];
+  for (let pi = 0; pi < STEP_KEYS.length; pi++) {
+    if (pi === 3) {
+      nodes.push(<LockDivider key="lock" label={t.ideaLockLabel} />);
+    } else if (pi > 0) {
+      nodes.push(<ArrowConnector key={`a${pi}`} />);
+    }
+    nodes.push(
+      <PhaseColumn
+        key={`p${pi}`}
+        pi={pi}
+        title={t.phases[pi].title}
+        short={t.archStepShort}
+        meta={STEP_META[pi]}
+        onStepClick={onStepClick}
+      />
+    );
+  }
+  return (
+    <div style={{
+      display: "flex", gap: 0, alignItems: "stretch",
+      overflowX: "auto", padding: "4px 2px 18px",
+      marginBottom: 10,
+    }}>
+      {nodes}
+    </div>
+  );
+}
+
+function ArchLegend({ legend }) {
+  const items = [
+    { k: "mainFlow" },
+    { k: "humanOnly" },
+    { k: "hardRule" },
+    { k: "conditional" },
+    { k: "optional" },
+    { k: "lockPoint" },
+  ];
+  const swatch = (k) => {
+    if (k === "mainFlow") return <div style={{ width: 16, height: 10, background: INK.paperWarm, border: `0.5px solid ${INK.inkFaint}`, borderRadius: 1.5 }}/>;
+    if (k === "humanOnly") return <div style={{ width: 16, height: 10, background: INK.ink, borderRadius: 1.5 }}/>;
+    if (k === "hardRule") return (
+      <div style={{ width: 16, height: 10, background: INK.paperWarm, border: `0.5px solid ${INK.inkFaint}`, borderRadius: 1.5, position: "relative" }}>
+        <div style={{ position: "absolute", top: 1, right: 1, width: 3, height: 3, borderRadius: "50%", background: INK.vermilion }}/>
+      </div>
+    );
+    if (k === "conditional") return <div style={{ width: 16, height: 10, background: "transparent", border: `1px dashed ${INK.vermilion}`, borderRadius: 1.5 }}/>;
+    if (k === "optional") return <div style={{ width: 16, height: 10, background: "transparent", border: `1px dotted ${INK.inkSubtle}`, borderRadius: 1.5 }}/>;
+    if (k === "lockPoint") return (
+      <div style={{ width: 16, height: 10, display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ width: 1, height: 10, background: INK.vermilion, opacity: 0.7 }}/>
+      </div>
+    );
+    return null;
+  };
+  return (
+    <div style={{
+      display: "flex", flexWrap: "wrap", gap: "8px 18px",
+      marginBottom: 22, paddingLeft: 2,
+    }}>
+      {items.map((it) => (
+        <div key={it.k} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          {swatch(it.k)}
+          <div style={{
+            fontFamily: FONT.sc, fontSize: 10.5, color: INK.inkMed,
+            letterSpacing: "0.02em",
+          }}>
+            {legend[it.k]}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HighlightCards({ highlights }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+      gap: 10,
+      marginBottom: 4,
+    }}>
+      {highlights.map((h, i) => (
+        <div key={i} style={{
+          background: INK.paperWarm,
+          border: `0.5px solid ${INK.inkFaint}`,
+          borderRadius: 2,
+          padding: "14px 13px 14px",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+        }}>
+          <div style={{
+            fontFamily: FONT.mono, fontSize: 9, color: INK.vermilion,
+            letterSpacing: "0.14em", fontWeight: 600,
+            textTransform: "uppercase", marginBottom: 8,
+            lineHeight: 1.3,
+          }}>
+            {h.tag}
+          </div>
+          <div style={{
+            fontFamily: FONT.sc, fontSize: 14, fontWeight: 600, color: INK.ink,
+            lineHeight: 1.35, letterSpacing: "0.01em", marginBottom: 10,
+          }}>
+            {h.title}
+          </div>
+          <div style={{
+            fontFamily: FONT.sc, fontSize: 11, fontWeight: 400,
+            color: INK.inkMed, lineHeight: 1.55, marginBottom: 10,
+          }}>
+            {h.main}
+          </div>
+          <div style={{
+            fontFamily: FONT.sc, fontSize: 10, fontWeight: 400,
+            color: INK.inkLight, lineHeight: 1.5,
+            borderTop: `0.5px dashed ${INK.inkFaint}`, paddingTop: 8,
+            marginTop: "auto",
+          }}>
+            {h.sub}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OverviewView({ lang, setView, setTab, setAp }) {
+  const t = T[lang];
+  const handleStepClick = (pi) => {
+    setView("detail");
+    setTab("workflow");
+    setAp(pi);
+  };
+  return (
+    <div style={{ padding: "22px 24px 60px" }}>
+      {/* Hero definition block */}
+      <div style={{ textAlign: "center", maxWidth: 720, margin: "4px auto 34px" }}>
+        <div style={{
+          fontFamily: FONT.sc, fontSize: 19, fontWeight: 500,
+          lineHeight: 1.45, color: INK.ink, letterSpacing: "0.02em",
+        }}>
+          {t.heroDef}
+        </div>
+        <div style={{
+          marginTop: 10, fontFamily: FONT.mono, fontSize: 10,
+          color: INK.inkSubtle, letterSpacing: "0.22em", textTransform: "uppercase",
+        }}>
+          {t.heroStageNote}
+        </div>
+      </div>
+
+      {/* Architecture diagram */}
+      <SectionHeading label={t.archTitle} note={t.archNote} />
+      <ArchitectureDiagram lang={lang} onStepClick={handleStepClick} />
+      <ArchLegend legend={t.archLegend} />
+
+      {/* Highlights */}
+      <div style={{ height: 14 }}/>
+      <SectionHeading label={t.highlightsTitle} note={null} />
+      <HighlightCards highlights={t.highlights} />
+
+      {/* Enter detail button */}
+      <div style={{ textAlign: "center", marginTop: 36 }}>
+        <button
+          onClick={() => { setView("detail"); setTab("workflow"); }}
+          style={{
+            background: INK.ink,
+            color: INK.paperWarm,
+            border: "none",
+            padding: "11px 26px",
+            fontFamily: FONT.serif,
+            fontStyle: "italic",
+            fontSize: 14,
+            letterSpacing: "0.04em",
+            cursor: "pointer",
+            borderRadius: 2,
+          }}
+        >
+          {t.enterDetailBtn}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// App
+// ============================================================================
 
 function App() {
   const [lang, setLang] = useState("en");
+  const [view, setView] = useState("overview");
   const [tab, setTab] = useState("workflow");
   const [ap, setAp] = useState(0);
   const ref = useRef(null);
   const t = T[lang];
 
-  // Inject Google Fonts
   useEffect(() => {
     const link = document.createElement("link");
     link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Noto+Serif+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
@@ -843,7 +2446,7 @@ function App() {
 
   useEffect(() => {
     ref.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [ap, tab]);
+  }, [ap, tab, view]);
 
   const phase = t.phases[ap];
 
@@ -858,7 +2461,6 @@ function App() {
       lineHeight: 1.6,
       position: "relative",
     }}>
-      {/* Paper texture overlay */}
       <div style={{
         position: "fixed",
         inset: 0,
@@ -867,14 +2469,13 @@ function App() {
         zIndex: 0,
       }}/>
 
-      {/* Header with taiji hero */}
+      {/* Header */}
       <div style={{
         padding: "20px 20px 18px",
         position: "relative",
         flexShrink: 0,
         zIndex: 1,
       }}>
-        {/* Lang toggle — vermilion seal */}
         <button
           onClick={() => setLang(lang === "en" ? "zh" : "en")}
           style={{
@@ -901,7 +2502,32 @@ function App() {
           {lang === "en" ? "中" : "EN"}
         </button>
 
-        {/* Taiji hero */}
+        {view === "detail" && (
+          <button
+            onClick={() => setView("overview")}
+            style={{
+              position: "absolute",
+              top: 28,
+              left: 20,
+              background: "transparent",
+              border: "none",
+              fontFamily: FONT.serif,
+              fontStyle: "italic",
+              fontSize: 13,
+              color: INK.inkMed,
+              letterSpacing: "0.02em",
+              cursor: "pointer",
+              padding: "4px 6px",
+              zIndex: 2,
+              transition: "color 0.2s, transform 0.2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = INK.ink; e.currentTarget.style.transform = "translateX(-2px)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = INK.inkMed; e.currentTarget.style.transform = "translateX(0)"; }}
+          >
+            {t.returnToOverview}
+          </button>
+        )}
+
         <div style={{
           display: "flex",
           justifyContent: "center",
@@ -912,7 +2538,6 @@ function App() {
           <TaijiHero />
         </div>
 
-        {/* Title block */}
         <div style={{ textAlign: "center" }}>
           <h1 style={{
             fontFamily: FONT.serif,
@@ -941,15 +2566,16 @@ function App() {
             fontFamily: FONT.mono,
             fontSize: 9,
             color: INK.inkSubtle,
-            letterSpacing: "0.12em",
+            letterSpacing: "0.1em",
             margin: "4px 0 0",
+            padding: "0 12px",
+            lineHeight: 1.5,
           }}>
             {t.modelNote}
           </p>
         </div>
       </div>
 
-      {/* Divider */}
       <div style={{
         height: 1,
         background: `linear-gradient(to right, transparent, ${INK.inkLight} 15%, ${INK.inkLight} 85%, transparent)`,
@@ -959,48 +2585,54 @@ function App() {
         zIndex: 1,
       }}/>
 
-      {/* Tabs */}
-      <div style={{
-        display: "flex",
-        padding: "16px 28px 0",
-        gap: 28,
-        justifyContent: "center",
-        flexShrink: 0,
-        zIndex: 1,
-      }}>
-        {[{ k: "workflow", l: t.tabWorkflow }, { k: "family", l: t.tabFamily }].map(tb => (
-          <button
-            key={tb.k}
-            onClick={() => setTab(tb.k)}
-            style={{
-              fontFamily: FONT.serif,
-              fontSize: 17,
-              color: tab === tb.k ? INK.ink : INK.inkSubtle,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px 0 14px",
-              position: "relative",
-              letterSpacing: "0.04em",
-              fontWeight: 500,
-              transition: "color 0.3s",
-            }}
-          >
-            {tb.l}
-            {tab === tb.k && <WavyUnderline />}
-          </button>
-        ))}
-      </div>
+      {/* Tabs (3) · detail view only */}
+      {view === "detail" && (
+        <div style={{
+          display: "flex",
+          padding: "16px 20px 0",
+          gap: 22,
+          justifyContent: "center",
+          flexShrink: 0,
+          zIndex: 1,
+          flexWrap: "wrap",
+        }}>
+          {[
+            { k: "workflow", l: t.tabWorkflow },
+            { k: "combinations", l: t.tabCombinations },
+            { k: "mechanisms", l: t.tabMechanisms },
+          ].map(tb => (
+            <button
+              key={tb.k}
+              onClick={() => setTab(tb.k)}
+              style={{
+                fontFamily: FONT.serif,
+                fontSize: 16,
+                color: tab === tb.k ? INK.ink : INK.inkSubtle,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px 0 14px",
+                position: "relative",
+                letterSpacing: "0.04em",
+                fontWeight: 500,
+                transition: "color 0.3s",
+              }}
+            >
+              {tb.l}
+              {tab === tb.k && <WavyUnderline />}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Phase Nav */}
-      {tab === "workflow" && (
+      {/* Phase Nav · only on workflow tab within detail view */}
+      {view === "detail" && tab === "workflow" && (
         <div style={{
           padding: "18px 40px 12px",
           position: "relative",
           flexShrink: 0,
           zIndex: 1,
         }}>
-          {/* Track line */}
           <div style={{
             position: "absolute",
             top: 33,
@@ -1054,8 +2686,12 @@ function App() {
 
       {/* Content */}
       <div ref={ref} style={{ flex: 1, overflow: "auto", zIndex: 1, position: "relative" }}>
-        {tab === "family" ? (
-          <FamilyView lang={lang} />
+        {view === "overview" ? (
+          <OverviewView lang={lang} setView={setView} setTab={setTab} setAp={setAp} />
+        ) : tab === "combinations" ? (
+          <CombinationsView lang={lang} />
+        ) : tab === "mechanisms" ? (
+          <MechanismsView lang={lang} />
         ) : (
           <div style={{ padding: "18px 28px 60px" }}>
             {/* Phase header */}
@@ -1109,6 +2745,7 @@ function App() {
                 step={s}
                 meta={STEP_META[ap][si]}
                 promptKey={getPromptKey(ap, si)}
+                stepLabel={getStepLabel(ap, si)}
                 lang={lang}
                 index={si}
                 roleTable={ap === 1 && si === 0 ? (lang === "en" ? ROLE_TABLE : ROLE_TABLE_ZH) : null}
@@ -1164,7 +2801,7 @@ function App() {
               )}
             </div>
 
-            {/* Footer colophon — only on last phase */}
+            {/* Footer colophon · only on last phase */}
             {ap === t.phases.length - 1 && (
               <div style={{
                 marginTop: 40,
@@ -1185,7 +2822,7 @@ function App() {
                   letterSpacing: "0.08em",
                   marginBottom: 4,
                 }}>
-                  太极生两仪，两仪生四象
+                  太极生两仪，两仪成四象
                 </div>
                 <div style={{
                   fontFamily: FONT.serif,
@@ -1204,7 +2841,7 @@ function App() {
                   letterSpacing: "0.25em",
                   textTransform: "uppercase",
                 }}>
-                  Liangyi · v1.0
+                  Liangyi · v2.0
                 </div>
               </div>
             )}
