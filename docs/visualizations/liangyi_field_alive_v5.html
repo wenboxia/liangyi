@@ -1,0 +1,720 @@
+<!--
+  ============================================================================
+  ⚠️ 过期声明（2026-08-27）
+
+  本文件叙事中出现的**底模坐标**与**窗口分配**停留在 2026-04 快照，已被
+  2026-08-27 的维度 A 判据更换取代。以 `docs/` 为准。
+
+  已知过期内容：
+    - A4·B3 / A3·B3 等坐标标注基于旧的"对齐路径"四档分类。现行维度 A 是
+      "冲突偏向"三档：A1 规范优先 / A2 权限优先 / A3 任务优先，另加未公开档
+    - "Qwen-1 零上下文进入"——P2B 单盲的现行默认窗口是 Kimi-1
+    - 文中的 RLVR / 对齐路径等术语属于旧判据体系
+
+  本文件的**场演化叙事本身不受影响**（P0 单源 → P1 多源造场 → 人做最终决策
+  的红色承担波 → P2 二次造场 → 场归于寂静），受影响的只有具体模型名和坐标标注。
+
+  权威来源：docs/session-hygiene.md 原则四、references/ai-training-landscape.md
+  修复计划：与 Liangyi.jsx 一并在 todo.md Phase 3 统一重做。
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两仪论 · 活的场演化 v5</title>
+<style>
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f5f4ef;
+  --color-background-tertiary: #ebe9e2;
+  --color-text-primary: #2c2c2a;
+  --color-text-secondary: #5f5e5a;
+  --color-text-tertiary: #888780;
+  --color-border-tertiary: rgba(0, 0, 0, 0.15);
+  --color-border-secondary: rgba(0, 0, 0, 0.3);
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary: #1a1a18;
+    --color-background-secondary: #242422;
+    --color-background-tertiary: #2e2e2b;
+    --color-text-primary: #e8e6dc;
+    --color-text-secondary: #a8a69c;
+    --color-text-tertiary: #7a7974;
+    --color-border-tertiary: rgba(255, 255, 255, 0.15);
+    --color-border-secondary: rgba(255, 255, 255, 0.3);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  font-family: var(--font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container {
+  max-width: 720px;
+  width: 100%;
+}
+
+.header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.t { font-family: var(--font-sans); font-size: 14px; fill: var(--color-text-primary); }
+.ts { font-family: var(--font-sans); font-size: 12px; fill: var(--color-text-secondary); }
+.th { font-family: var(--font-sans); font-size: 14px; font-weight: 500; fill: var(--color-text-primary); }
+
+.timeline-container { margin-top: 16px; padding: 0 8px; }
+.timeline-track { 
+  position: relative; height: 8px; background: var(--color-border-tertiary); 
+  border-radius: 4px; cursor: pointer; margin: 24px 0 12px;
+}
+.timeline-fill { 
+  position: absolute; top: 0; left: 0; height: 100%; 
+  background: var(--color-text-primary); border-radius: 4px;
+}
+.timeline-thumb {
+  position: absolute; top: 50%; width: 18px; height: 18px;
+  background: var(--color-background-primary); border: 2px solid var(--color-text-primary);
+  border-radius: 50%; transform: translate(-50%, -50%); cursor: grab;
+}
+.timeline-thumb:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); }
+.stage-labels {
+  display: flex; justify-content: space-between; margin-top: 8px;
+  font-size: 10px; color: var(--color-text-secondary); user-select: none;
+  flex-wrap: wrap; gap: 4px;
+}
+.stage-label { position: relative; cursor: pointer; white-space: nowrap; }
+.stage-label:hover { color: var(--color-text-primary); }
+.controls { 
+  display: flex; align-items: center; gap: 12px; margin-top: 12px;
+  font-size: 13px; color: var(--color-text-secondary);
+}
+.play-btn {
+  padding: 4px 12px; background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-md);
+  cursor: pointer; font-size: 12px; color: var(--color-text-primary);
+  font-family: inherit;
+}
+.play-btn:hover { background: var(--color-background-tertiary); }
+.current-stage { font-weight: 500; color: var(--color-text-primary); }
+.stage-description {
+  margin-top: 16px; padding: 12px 16px;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-lg);
+  font-size: 13px; line-height: 1.6; color: var(--color-text-secondary);
+  min-height: 60px;
+}
+.stage-description strong { color: var(--color-text-primary); font-weight: 500; }
+.stage-description .decide { color: #A02C2C; font-weight: 500; }
+
+.footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-tertiary);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="header">
+<h1>两仪论 · 活的场演化</h1>
+<p>从 P0 初始想法到人的最终决策的完整场论演化。AI 源不是独立的山峰，而是扭曲整个思维空间的质量体；人在被扭曲的场里感知方向、选点站定。</p>
+</div>
+
+<svg width="100%" viewBox="0 0 680 500" id="field-svg" role="img">
+<title>两仪论 · 活的场演化 v5</title>
+<desc>克制版源辐射，场依然呼吸但更安静。</desc>
+
+<defs>
+<radialGradient id="purple-glow" cx="50%" cy="50%" r="50%">
+<stop offset="0%" stop-color="#7F77DD" stop-opacity="0.85"/>
+<stop offset="45%" stop-color="#7F77DD" stop-opacity="0.25"/>
+<stop offset="100%" stop-color="#7F77DD" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="green-glow" cx="50%" cy="50%" r="50%">
+<stop offset="0%" stop-color="#1D9E75" stop-opacity="0.85"/>
+<stop offset="45%" stop-color="#1D9E75" stop-opacity="0.25"/>
+<stop offset="100%" stop-color="#1D9E75" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="orange-glow" cx="50%" cy="50%" r="50%">
+<stop offset="0%" stop-color="#D85A30" stop-opacity="0.85"/>
+<stop offset="45%" stop-color="#D85A30" stop-opacity="0.25"/>
+<stop offset="100%" stop-color="#D85A30" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="gold-glow" cx="50%" cy="50%" r="50%">
+<stop offset="0%" stop-color="#EF9F27" stop-opacity="0.85"/>
+<stop offset="45%" stop-color="#EF9F27" stop-opacity="0.25"/>
+<stop offset="100%" stop-color="#EF9F27" stop-opacity="0"/>
+</radialGradient>
+</defs>
+
+<rect x="0" y="0" width="680" height="500" fill="transparent"/>
+
+<g id="field-surface"></g>
+<g id="field-contours"></g>
+<g id="idea-center"></g>
+<g id="sources"></g>
+<g id="decision-point"></g>
+
+<text class="t" x="340" y="26" text-anchor="middle" font-weight="500" id="main-title">P0 · 初始想法</text>
+<text class="ts" x="340" y="44" text-anchor="middle" id="main-subtitle">一个想法悬浮在空间</text>
+
+<g id="current-actors" transform="translate(20, 450)"></g>
+</svg>
+
+<div class="timeline-container">
+<div class="timeline-track" id="track">
+<div class="timeline-fill" id="fill" style="width: 0%"></div>
+<div class="timeline-thumb" id="thumb" style="left: 0%"></div>
+</div>
+<div class="stage-labels">
+<span class="stage-label" data-t="0">P0</span>
+<span class="stage-label" data-t="8">Claude</span>
+<span class="stage-label" data-t="20">DeepSeek</span>
+<span class="stage-label" data-t="32">人</span>
+<span class="stage-label" data-t="46">P1.4 综合</span>
+<span class="stage-label" data-t="56">P2A 投资人</span>
+<span class="stage-label" data-t="67">P2B 单盲</span>
+<span class="stage-label" data-t="78">P2C 知情</span>
+<span class="stage-label" data-t="88">P2D 拆台</span>
+<span class="stage-label" data-t="97">决策</span>
+</div>
+<div class="controls">
+<button class="play-btn" id="play">▶ 播放</button>
+<span>当前位置：<span class="current-stage" id="current-t">0%</span></span>
+</div>
+<div class="stage-description" id="desc">
+<strong>P0 · 初始状态。</strong> 一个粗糙的想法悬浮在思维空间中。空间是平的，还没有任何扭曲。
+</div>
+</div>
+
+<div class="footer">
+两仪论（Liangyi）· 对抗 AI 溶解人独立判断的产品开发方法论<br>
+可视化 v5 · 生成于 Claude
+</div>
+
+</div>
+
+<script>
+(function() {
+  const fieldSurface = document.getElementById('field-surface');
+  const fieldContours = document.getElementById('field-contours');
+  const ideaCenter = document.getElementById('idea-center');
+  const sourcesG = document.getElementById('sources');
+  const decisionPoint = document.getElementById('decision-point');
+  const actorsG = document.getElementById('current-actors');
+  const title = document.getElementById('main-title');
+  const subtitle = document.getElementById('main-subtitle');
+  const thumb = document.getElementById('thumb');
+  const fill = document.getElementById('fill');
+  const track = document.getElementById('track');
+  const currentT = document.getElementById('current-t');
+  const desc = document.getElementById('desc');
+  const playBtn = document.getElementById('play');
+
+  let t = 0;
+  let animating = false;
+  let isDragging = false;
+  let fieldTime = 0;
+
+  const centerX = 340, centerY = 240;
+
+  function fadeIn(curr, t1, t2) {
+    if (curr < t1) return 0;
+    if (curr > t2) return 1;
+    return (curr - t1) / (t2 - t1);
+  }
+
+  function window_(curr, inStart, inEnd, outStart, outEnd) {
+    if (curr < inStart || curr > outEnd) return 0;
+    if (curr < inEnd) return (curr - inStart) / (inEnd - inStart);
+    if (curr < outStart) return 1;
+    return 1 - (curr - outStart) / (outEnd - outStart);
+  }
+
+  function getActiveSources() {
+    const active = [];
+
+    const claudeP1 = window_(t, 8, 12, 44, 48);
+    const claudeP2A = window_(t, 54, 58, 65, 69);
+    const claudeP2C = window_(t, 76, 80, 86, 90);
+    const claudeIntensity = Math.max(claudeP1, claudeP2A, claudeP2C);
+
+    let claudeRole = '';
+    if (claudeP1 > 0.01) claudeRole = 'Claude-1 · 专家 A';
+    if (claudeP2A > 0.01) claudeRole = 'Claude-3 · 投资人批判';
+    if (claudeP2C > 0.01) claudeRole = 'Claude-4 · 知情复审';
+
+    if (claudeIntensity > 0.02) {
+      active.push({
+        id: 'claude', x: 180, y: 200,
+        color: '#7F77DD', glow: 'purple-glow',
+        intensity: claudeIntensity, label: claudeRole
+      });
+    }
+
+    const dsP1 = window_(t, 20, 24, 44, 48);
+    const dsP2D = window_(t, 86, 90, 95, 99);
+    const dsIntensity = Math.max(dsP1, dsP2D);
+
+    let dsRole = '';
+    if (dsP1 > 0.01) dsRole = 'DeepSeek-1 · 专家 B';
+    if (dsP2D > 0.01) dsRole = 'DeepSeek-2 · 拆台专家';
+
+    if (dsIntensity > 0.02) {
+      active.push({
+        id: 'deepseek', x: 500, y: 200,
+        color: '#1D9E75', glow: 'green-glow',
+        intensity: dsIntensity, label: dsRole
+      });
+    }
+
+    const humanP1 = window_(t, 32, 36, 44, 48);
+    if (humanP1 > 0.02) {
+      active.push({
+        id: 'human', x: 340, y: 340,
+        color: '#D85A30', glow: 'orange-glow',
+        intensity: humanP1, label: '人的业务处境'
+      });
+    }
+
+    const qwenP2B = window_(t, 67, 71, 76, 80);
+    if (qwenP2B > 0.02) {
+      active.push({
+        id: 'qwen', x: 500, y: 200,
+        color: '#EF9F27', glow: 'gold-glow',
+        intensity: qwenP2B, label: 'Qwen-1 · 单盲复审'
+      });
+    }
+
+    return active;
+  }
+
+  function getIdeaColor() {
+    if (t < 46) return null;
+    const progress = Math.min(1, (t - 46) / 50);
+    const stops = [
+      { p: 0.0, c: [245, 196, 179] },
+      { p: 0.22, c: [240, 153, 123] },
+      { p: 0.45, c: [216, 90, 48] },
+      { p: 0.68, c: [186, 71, 42] },
+      { p: 0.9, c: [160, 44, 44] },
+      { p: 1.0, c: [128, 30, 30] }
+    ];
+    let prev = stops[0], next = stops[stops.length - 1];
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (progress >= stops[i].p && progress <= stops[i + 1].p) {
+        prev = stops[i]; next = stops[i + 1]; break;
+      }
+    }
+    const localP = (progress - prev.p) / (next.p - prev.p);
+    const r = Math.round(prev.c[0] + (next.c[0] - prev.c[0]) * localP);
+    const g = Math.round(prev.c[1] + (next.c[1] - prev.c[1]) * localP);
+    const b = Math.round(prev.c[2] + (next.c[2] - prev.c[2]) * localP);
+    return { rgb: 'rgb(' + r + ',' + g + ',' + b + ')' };
+  }
+
+  function getIdeaCenterData() {
+    const initialIdea = window_(t, 0, 1, 6, 10);
+    if (initialIdea > 0.02) return { intensity: initialIdea, isInitial: true, color: null };
+    const mergedIdea = window_(t, 46, 50, 94, 98);
+    if (mergedIdea > 0.02) return { intensity: mergedIdea, isInitial: false, color: getIdeaColor() };
+    return null;
+  }
+
+  function getDecisionIntensity() {
+    return fadeIn(t, 97, 100);
+  }
+
+  function sampleField(x, y, sources, idea, time) {
+    let depth = 0;
+
+    for (const src of sources) {
+      const dx = x - src.x;
+      const dy = y - src.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      const pulse = 1 + Math.sin(time * 0.04 + src.x * 0.01) * 0.12;
+      const twist = Math.sin(dist * 0.035 - time * 0.06) * 0.15;
+
+      const sigma = 90 + Math.sin(time * 0.03) * 8;
+      const wellDepth = src.intensity * 1.2 * pulse;
+      const well = wellDepth * Math.exp(-(dist * dist) / (2 * sigma * sigma));
+
+      const ripple = src.intensity * 0.08 * Math.exp(-dist / 200) *
+                     Math.sin(dist * 0.04 - time * 0.08);
+
+      depth += well * (1 + twist) + ripple;
+    }
+
+    if (idea && !idea.isInitial) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const pulse = 1 + Math.sin(time * 0.05) * 0.1;
+      depth += idea.intensity * 0.6 * pulse * Math.exp(-(dist * dist) / 6000);
+    }
+
+    return depth;
+  }
+
+  function drawField() {
+    const sources = getActiveSources();
+    const idea = getIdeaCenterData();
+
+    if (sources.length === 0 && !idea) {
+      fieldSurface.innerHTML = '';
+      fieldContours.innerHTML = '';
+      return;
+    }
+
+    const levels = [0.15, 0.3, 0.5, 0.75, 1.0, 1.3];
+    let surfaceHtml = '';
+    let contourHtml = '';
+
+    for (let li = 0; li < levels.length; li++) {
+      const level = levels[li];
+
+      let cx = centerX, cy = centerY;
+      if (sources.length > 0) {
+        let totalW = 0, wx = 0, wy = 0;
+        for (const s of sources) {
+          wx += s.x * s.intensity;
+          wy += s.y * s.intensity;
+          totalW += s.intensity;
+        }
+        if (totalW > 0) { cx = wx / totalW; cy = wy / totalW; }
+      }
+
+      const points = [];
+      for (let a = 0; a < 360; a += 2.5) {
+        const rad = a * Math.PI / 180;
+        let rLo = 5, rHi = 350;
+
+        for (let iter = 0; iter < 15; iter++) {
+          const rMid = (rLo + rHi) / 2;
+          const px = cx + Math.cos(rad) * rMid;
+          const py = cy + Math.sin(rad) * rMid;
+          const val = sampleField(px, py, sources, idea, fieldTime);
+          if (val > level) rLo = rMid;
+          else rHi = rMid;
+        }
+
+        const finalR = (rLo + rHi) / 2;
+        if (finalR > 10 && finalR < 340) {
+          const px = cx + Math.cos(rad) * finalR;
+          const py = cy + Math.sin(rad) * finalR;
+          if (px > 10 && px < 670 && py > 60 && py < 430) {
+            points.push([px, py]);
+          }
+        }
+      }
+
+      if (points.length > 15) {
+        let pathD = 'M ' + points[0][0].toFixed(1) + ' ' + points[0][1].toFixed(1);
+        for (let i = 1; i < points.length; i++) {
+          pathD += ' L ' + points[i][0].toFixed(1) + ' ' + points[i][1].toFixed(1);
+        }
+        pathD += ' Z';
+
+        const fillOpacity = 0.06 + li * 0.025;
+        const strokeOpacity = 0.25 + li * 0.05;
+
+        let fillColor = '#5F5E5A';
+        let strokeColor = '#888780';
+        if (sources.length === 1) {
+          fillColor = sources[0].color;
+          strokeColor = sources[0].color;
+        } else if (sources.length === 0 && idea && !idea.isInitial) {
+          fillColor = idea.color.rgb;
+          strokeColor = idea.color.rgb;
+        } else if (sources.length >= 2) {
+          fillColor = sources[0].color;
+          strokeColor = '#5F5E5A';
+        }
+
+        surfaceHtml += '<path d="' + pathD + '" fill="' + fillColor + '" opacity="' + fillOpacity + '" stroke="none"/>';
+        contourHtml += '<path d="' + pathD + '" fill="none" stroke="' + strokeColor + '" stroke-width="0.6" opacity="' + strokeOpacity + '"/>';
+      }
+    }
+
+    fieldSurface.innerHTML = surfaceHtml;
+    fieldContours.innerHTML = contourHtml;
+  }
+
+  function drawSources() {
+    let html = '';
+    const activeSources = getActiveSources();
+
+    activeSources.forEach(src => {
+      const pulse = 1 + Math.sin(fieldTime * 0.07 + src.x * 0.02) * 0.07;
+      const glowR = 55 * src.intensity * pulse;
+      const coreR = 9 * src.intensity;
+
+      html += '<circle cx="' + src.x + '" cy="' + src.y + '" r="' + glowR + '" fill="url(#' + src.glow + ')"/>';
+      html += '<circle cx="' + src.x + '" cy="' + src.y + '" r="' + coreR + '" fill="' + src.color + '" opacity="' + (0.85 * src.intensity) + '"/>';
+
+      for (let w = 0; w < 3; w++) {
+        const wavePhase = (fieldTime * 0.025 + w * 0.45) % 2.2;
+        const waveR = 12 + wavePhase * 32;
+        const waveOpacity = (1 - wavePhase / 2.2) * 0.32 * src.intensity;
+        const waveWidth = 0.7 - wavePhase * 0.15;
+        html += '<circle cx="' + src.x + '" cy="' + src.y + '" r="' + waveR + '" fill="none" stroke="' + src.color + '" stroke-width="' + Math.max(0.25, waveWidth) + '" opacity="' + waveOpacity + '"/>';
+      }
+
+      if (src.intensity > 0.4) {
+        const labelY = src.y > centerY ? src.y + 40 : src.y - 28;
+        html += '<text class="ts" x="' + src.x + '" y="' + labelY + '" text-anchor="middle" fill="' + src.color + '" font-weight="500" opacity="' + src.intensity + '">' + src.label + '</text>';
+      }
+    });
+
+    sourcesG.innerHTML = html;
+  }
+
+  function drawIdeaCenter() {
+    const idea = getIdeaCenterData();
+    if (!idea) {
+      ideaCenter.innerHTML = '';
+      return;
+    }
+
+    const pulse = 1 + Math.sin(fieldTime * 0.06) * 0.1;
+
+    if (idea.isInitial) {
+      const coreR = 14 * idea.intensity * pulse;
+      const glowR = 34 * idea.intensity;
+      ideaCenter.innerHTML =
+        '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + glowR + '" fill="url(#purple-glow)" opacity="' + idea.intensity + '"/>' +
+        '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + coreR + '" fill="#7F77DD" opacity="' + idea.intensity + '"/>' +
+        '<text class="ts" x="' + centerX + '" y="' + (centerY - 25) + '" text-anchor="middle" fill="#7F77DD" opacity="' + idea.intensity + '">初始想法</text>';
+    } else {
+      const coreR = 18 * idea.intensity * pulse;
+      const glowR = 58 * idea.intensity;
+      const c = idea.color;
+
+      let ripples = '';
+      for (let w = 0; w < 3; w++) {
+        const wavePhase = (fieldTime * 0.025 + w * 0.5) % 2.5;
+        const waveR = 22 + wavePhase * 45;
+        const waveOpacity = (1 - wavePhase / 2.5) * 0.35 * idea.intensity;
+        ripples += '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + waveR + '" fill="none" stroke="' + c.rgb + '" stroke-width="0.8" opacity="' + waveOpacity + '"/>';
+      }
+
+      ideaCenter.innerHTML =
+        ripples +
+        '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + glowR + '" fill="' + c.rgb + '" opacity="' + (0.25 * idea.intensity) + '"/>' +
+        '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + coreR + '" fill="' + c.rgb + '" opacity="' + idea.intensity + '" stroke="' + c.rgb + '" stroke-width="1.5"/>' +
+        '<text class="ts" x="' + centerX + '" y="' + (centerY - 30) + '" text-anchor="middle" fill="' + c.rgb + '" font-weight="500" opacity="' + idea.intensity + '">融合方案 idea.md</text>';
+    }
+  }
+
+  function drawDecisionPoint() {
+    const intensity = getDecisionIntensity();
+    if (intensity === 0) {
+      decisionPoint.innerHTML = '';
+      return;
+    }
+
+    const pulse = 1 + Math.sin(fieldTime * 0.14) * 0.18;
+    const coreR = 18 * intensity;
+    const glowR = 85 * intensity * pulse;
+
+    let waves = '';
+    for (let w = 0; w < 4; w++) {
+      const wavePhase = (fieldTime * 0.035 + w * 0.55) % 2.8;
+      const waveR = 25 + wavePhase * 60;
+      const waveOpacity = (1 - wavePhase / 2.8) * 0.7 * intensity;
+      waves += '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + waveR + '" fill="none" stroke="#7A1616" stroke-width="1.2" opacity="' + waveOpacity + '"/>';
+    }
+
+    decisionPoint.innerHTML =
+      waves +
+      '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + glowR + '" fill="#7A1616" opacity="' + (0.3 * intensity) + '"/>' +
+      '<circle cx="' + centerX + '" cy="' + centerY + '" r="' + coreR + '" fill="#7A1616" opacity="' + intensity + '" stroke="#4A0C0C" stroke-width="2"/>' +
+      '<text class="ts" x="' + centerX + '" y="' + (centerY - 36) + '" text-anchor="middle" fill="#7A1616" font-weight="500" opacity="' + intensity + '">决策</text>' +
+      '<text class="ts" x="' + centerX + '" y="' + (centerY + 44) + '" text-anchor="middle" fill="#7A1616" opacity="' + (intensity * 0.85) + '">人做出最终决策</text>';
+  }
+
+  const stages = [
+    { min: 0, max: 8, title: 'P0 · 初始想法', sub: '一个想法悬浮在空间',
+      desc: '<strong>P0 · 初始状态。</strong> 一个粗糙的想法悬浮在思维空间中。空间是平的，还没有任何扭曲。' },
+    { min: 8, max: 20, title: 'P1.1 · Claude-1 入场', sub: '专家 A 开始扭曲空间',
+      desc: '<strong>Claude-1 进入场。</strong> 以专家 A 身份扭曲整个思维空间。能量波从源持续向外辐射——影响不限于源附近，是扭曲整个空间。' },
+    { min: 20, max: 32, title: 'P1.2 · DeepSeek-1 加入', sub: '两源共振，场真正活起来',
+      desc: '<strong>DeepSeek-1 作为 Model B 加入。</strong> 和 Claude-1 的底模坐标双维度 divergent（A4·B3 vs A1·B1——对齐路径 RLVR vs Constitutional，语料 跨文化双核 vs 英文母语）。两源同时存在时，场不是简单叠加，而是<strong>共振和扭曲</strong>——空间被两个不同方向同时拉扯。' },
+    { min: 32, max: 46, title: 'P1.3 · 人的处境加入', sub: '三源造场完成',
+      desc: '<strong>人的业务处境作为第三个源加入。</strong> 人不是外部观察者——人的处境也在扭曲空间。此刻场最复杂，曲率信息最丰富。P1.4 的人类综合将发生在这个场里。' },
+    { min: 46, max: 56, title: 'P1.4 · 综合完成', sub: '三源退场，融合方案在低势能点诞生',
+      desc: '<strong>三源消失，它们的贡献被凝结。</strong> 人在三源扭曲的场里选定了一个稳定点——融合方案 idea.md 在中心浮现。浅粉红色表示它刚诞生，尚未被审查验证。' },
+    { min: 56, max: 67, title: 'P2A · Claude-3 投资人批判', sub: '新窗口的批判者入场',
+      desc: '<strong>Claude-3 新窗口进入。</strong> 不是续 Claude-1 也不是 Claude-2，是全新 session 从零上下文进入投资人角色。批判 idea.md 的逻辑和可行性。人判断哪些批判要响应，Claude-2 基于指令修改方案。' },
+    { min: 67, max: 78, title: 'P2B · Qwen-1 单盲复审', sub: '第三者 AI 零上下文',
+      desc: '<strong>Qwen-1 零上下文进入。</strong> Qwen（A3·B3）与 Claude（A1·B1）的底模坐标双维度 divergent，默认先验重合度最低，"补脑"能力最弱——反馈最真实。检验 idea.md 能否独立被读懂。' },
+    { min: 78, max: 88, title: 'P2C · Claude-4 知情复审', sub: '对比原版和修改版',
+      desc: '<strong>Claude-4 新窗口进入。</strong> 前面三个 Claude 各有立场（专家 A、作者、批判者），需要第四个中立对比者。它对比 idea.md 的初版和当前版，审查修改是否偏离了原意。' },
+    { min: 88, max: 97, title: 'P2D · DeepSeek-2 拆台', sub: '质疑整个框架',
+      desc: '<strong>DeepSeek-2 新窗口入场。</strong> 不续 DeepSeek-1，因为 DeepSeek-1 贡献过专家 B 方案，会为自己辩护。DeepSeek-2 从零质疑<strong>整个框架</strong>——这事真的该做吗？场此刻扭曲最剧烈，方案颜色最深。' },
+    { min: 97, max: 100, title: '决策', sub: '所有源消失，人承担',
+      desc: '<strong>所有 AI 源退场，场归于寂静。</strong><span class="decide">承担波从中心向外辐射——这是人做出最终决策的那一刻。决策点是红色的，因为只有人能做这个动作。AI 背不了黑锅。</span>' }
+  ];
+
+  function updateStage() {
+    const stage = stages.find(s => t >= s.min && t < s.max) || stages[stages.length - 1];
+    title.textContent = stage.title;
+    subtitle.textContent = stage.sub;
+    desc.innerHTML = stage.desc;
+
+    const activeSources = getActiveSources();
+    const idea = getIdeaCenterData();
+    let legendHtml = '';
+    let xOffset = 0;
+
+    activeSources.forEach(src => {
+      legendHtml += '<circle cx="' + (xOffset + 6) + '" cy="6" r="5" fill="' + src.color + '" opacity="' + src.intensity + '"/>';
+      legendHtml += '<text class="ts" x="' + (xOffset + 17) + '" y="9" opacity="' + src.intensity + '" fill="' + src.color + '">' + src.label + '</text>';
+      xOffset += 17 + src.label.length * 7 + 20;
+    });
+
+    if (idea && !idea.isInitial && activeSources.length === 0) {
+      const c = idea.color;
+      legendHtml += '<circle cx="6" cy="6" r="5" fill="' + c.rgb + '" opacity="' + idea.intensity + '"/>';
+      legendHtml += '<text class="ts" x="17" y="9" opacity="' + idea.intensity + '" fill="' + c.rgb + '">融合方案 idea.md（等待审查）</text>';
+    }
+
+    if (getDecisionIntensity() > 0.1) {
+      const dI = getDecisionIntensity();
+      legendHtml += '<circle cx="6" cy="6" r="5" fill="#7A1616" opacity="' + dI + '"/>';
+      legendHtml += '<text class="ts" x="17" y="9" opacity="' + dI + '" fill="#7A1616" font-weight="500">决策点</text>';
+    }
+
+    actorsG.innerHTML = legendHtml;
+  }
+
+  function render() {
+    drawField();
+    drawIdeaCenter();
+    drawSources();
+    drawDecisionPoint();
+    updateStage();
+
+    thumb.style.left = t + '%';
+    fill.style.width = t + '%';
+    currentT.textContent = Math.round(t) + '%';
+  }
+
+  let lastTime = 0;
+  function animate(ts) {
+    if (!lastTime) lastTime = ts;
+    const dt = ts - lastTime;
+    lastTime = ts;
+
+    fieldTime += dt * 0.1;
+
+    if (animating && !isDragging) {
+      t += dt * 0.010;
+      if (t >= 100) {
+        t = 100;
+        animating = false;
+        playBtn.textContent = '▶ 重播';
+      }
+    }
+
+    render();
+    requestAnimationFrame(animate);
+  }
+
+  function setTFromEvent(e) {
+    const rect = track.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = clientX - rect.left;
+    t = Math.max(0, Math.min(100, (x / rect.width) * 100));
+  }
+
+  track.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    animating = false;
+    playBtn.textContent = '▶ 播放';
+    setTFromEvent(e);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    setTFromEvent(e);
+  });
+
+  document.addEventListener('mouseup', () => { isDragging = false; });
+
+  track.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    animating = false;
+    playBtn.textContent = '▶ 播放';
+    setTFromEvent(e);
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    setTFromEvent(e);
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => { isDragging = false; });
+
+  document.querySelectorAll('.stage-label').forEach(label => {
+    label.addEventListener('click', () => {
+      t = parseFloat(label.dataset.t);
+      animating = false;
+      playBtn.textContent = '▶ 播放';
+    });
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (animating) {
+      animating = false;
+      playBtn.textContent = '▶ 播放';
+    } else {
+      if (t >= 100) t = 0;
+      animating = true;
+      playBtn.textContent = '⏸ 暂停';
+    }
+  });
+
+  requestAnimationFrame(animate);
+})();
+</script>
+
+</body>
+</html>
