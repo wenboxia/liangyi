@@ -1,0 +1,9 @@
+[project]
+name = "liangyi"
+version = "0.2.0"
+description = "两仪 · 对抗 AI 溶解人独立判断的产品开发工作流"
+requires-python = ">=3.10"
+dependencies = ["openai>=1.40", "pyyaml>=6.0", "python-dotenv>=1.0"]
+
+[tool.vercel]
+entrypoint = "api.index:handler"
