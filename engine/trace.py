@@ -44,6 +44,7 @@ class StepRecord:
     cost_usd: float
     duration_ms: int
     attempts: int
+    round: int = 1          # 第几轮 —— loop 之后同一个 step_id 会出现多次
     timestamp: str = field(default_factory=_now)
     kind: str = "step"
 
@@ -58,10 +59,21 @@ class DecisionRecord:
     trigger_reason: str | None
     decision: str | None   # 人的决定
     rationale: str | None  # 人给的理由
-    # 人从被叫住到做出决定花了多久。记它是因为方法论自己的「反滑坡规则」警告过：
-    # 人累了会说"你看着办"，而**从 decision-log 上完全看不出来**——记录里只会
-    # 写"人已确认"。耗时是唯一能从外部观察到的疲劳信号：连着跑多个场景时，
-    # 后面几次明显变快就该警惕数据可信度。
+    # 【这个字段不作为疲劳信号使用 —— 2026-09-07 判定】
+    #
+    # 原本是想拿它当「反滑坡规则」的外部观测量：人累了会说"你看着办"，而从
+    # decision-log 上完全看不出来，记录里只会写"人已确认"。
+    #
+    # 两个原因让它不成立：
+    #
+    # 一、量的不是想的时间。计时从「选项显示」到「打出数字」结束，不含读顾问
+    #    建议、写指令的时间。2026-09-06 那条链 2C 记了 6 秒，但那 6 秒只是打字。
+    #
+    # 二、更根本的是使用者自己指出的：跑实验期间他会中途做别的事，不同场次的
+    #    注意力状态本来就不同。这个噪声比要测的信号大，测不出疲劳。
+    #
+    # 字段保留（记录成本为零，且原始耗时本身是事实），但**任何分析和对外叙述
+    # 都不得把它当作疲劳或投入程度的证据**。
     think_ms: int | None = None
     # 检测器具体标出了什么。影子模式下这是唯一有价值的内容——
     # 只知道"响了"没用，得知道它指着哪一处说有问题。
@@ -77,6 +89,7 @@ class DecisionRecord:
     advisor_b_choice: str | None = None
     concur: bool | None = None          # 人的选择是否和两位顾问都一致
     verbatim_paste: bool | None = None  # 人的理由是否就是某份建议的原文
+    round: int = 1
     timestamp: str = field(default_factory=_now)
     kind: str = "decision"
 
@@ -191,6 +204,7 @@ class Trace:
         inputs: list[str],
         output_file: str,
         completion: Completion,
+        round: int = 1,
     ) -> StepRecord:
         record = StepRecord(
             step_id=step_id,
@@ -209,6 +223,7 @@ class Trace:
             cost_usd=completion.cost_usd,
             duration_ms=completion.duration_ms,
             attempts=completion.attempts,
+            round=round,
         )
         self._append(record)
         return record
@@ -227,6 +242,7 @@ class Trace:
         detail: str | None = None,
         advice=None,
         human_text: str = "",
+        round: int = 1,
     ) -> DecisionRecord:
         record = DecisionRecord(
             step_id=step_id,
@@ -238,6 +254,7 @@ class Trace:
             rationale=rationale,
             think_ms=think_ms,
             detail=detail,
+            round=round,
             **_advice_fields(advice, decision, human_text),
         )
         self._append(record)
@@ -248,6 +265,28 @@ class Trace:
     @property
     def steps(self) -> list[StepRecord]:
         return [r for r in self.records if isinstance(r, StepRecord)]
+
+    def _all_steps(self) -> list[dict]:
+        """
+        从 trace.jsonl 读全部步骤记录。
+
+        不能用内存里的 self.records —— 续跑时 __init__ 会把它重置成空列表，
+        于是 finish() 只统计本次会话跑的那几步。2026-09-06 那条链就是这么
+        写出「步数 1、花费 $0.227」的，真实是 12 步、$1.185：中间续跑过两次，
+        最后一次只跑了 2D-fix 一步。
+
+        trace.jsonl 是逐条追加的，任何时候读它都是完整的。
+        """
+        if not self.path.exists():
+            return []
+        out = []
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            if r.get("kind") == "step":
+                out.append(r)
+        return out
 
     @property
     def total_cost(self) -> float:
@@ -261,26 +300,29 @@ class Trace:
         )
 
     def finish(self, status: str = "completed", extra: dict | None = None) -> None:
-        tin, tout = self.total_tokens
+        # 统计一律从 trace.jsonl 全量算 —— 见 _all_steps 的说明
+        allsteps = self._all_steps()
         self.meta.update(
             {
                 "finished_at": _now(),
                 "status": status,
-                "steps": len(self.steps),
-                "total_cost_usd": round(self.total_cost, 6),
-                "tokens_in": tin,
-                "tokens_out": tout,
-                "reasoning_captured": sum(1 for r in self.steps if r.reasoning),
+                "steps": len(allsteps),
+                "total_cost_usd": round(sum(r["cost_usd"] for r in allsteps), 6),
+                "tokens_in": sum(r["tokens_in"] for r in allsteps),
+                "tokens_out": sum(r["tokens_out"] for r in allsteps),
+                "reasoning_captured": sum(1 for r in allsteps if r.get("reasoning")),
                 **(extra or {}),
             }
         )
         self._write_meta()
 
     def cost_summary(self) -> str:
+        allsteps = self._all_steps()          # 续跑时也要算上之前那几步
         by_model: dict[str, float] = {}
-        for r in self.steps:
-            by_model[r.model] = by_model.get(r.model, 0.0) + r.cost_usd
-        lines = [f"总花费 ${self.total_cost:.4f}（{len(self.steps)} 步）"]
+        for r in allsteps:
+            by_model[r["model"]] = by_model.get(r["model"], 0.0) + r["cost_usd"]
+        total = sum(r["cost_usd"] for r in allsteps)
+        lines = [f"总花费 ${total:.4f}（{len(allsteps)} 步）"]
         for model, cost in sorted(by_model.items(), key=lambda kv: -kv[1]):
             lines.append(f"  {model:32} ${cost:.4f}")
         return "\n".join(lines)

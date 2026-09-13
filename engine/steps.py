@@ -130,7 +130,11 @@ CHAIN: list[Step] = [
         prompt="p2b_blind.md",
         artifacts={"idea": "idea-v2.md"},
         output="P2B-blind-review.md",
-        max_tokens=8000,
+        # 24000 而不是 8000：GLM-5.3 在这一步实测思考 10480-13996 token，
+        # 8000 连思考都装不下 —— 历史五条链第一次调用全部返回空内容，
+        # 靠上层「空返回就把 max_tokens 加倍重试」才跑成功。
+        # 那 305-676 秒的耗时里，有一大半是白跑的第一次。
+        max_tokens=24000,
         note="单盲复审 —— target 知识诅咒 failure mode，激活 context 轴",
     ),
     Step(

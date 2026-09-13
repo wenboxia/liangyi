@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .config import REPO_ROOT, check_hard_rules, describe_profile
+from .config import REPO_ROOT, check_hard_rules, describe_profile, PROFILES
 from .orchestrator import (BackToP1, HardRuleViolation, Orchestrator, Scenario,
                            detect_p1_return)
 from .providers import preflight
@@ -61,7 +61,7 @@ def cmd_check(profile: str) -> int:
 def cmd_run(
     scenario_path: Path | None,
     profile: str,
-    hitl: str,
+    mode: str,
     baseline_only: bool,
     label: str,
     resume_dir: Path | None = None,
@@ -71,13 +71,13 @@ def cmd_run(
         meta = json.loads((resume_dir / "run.json").read_text(encoding="utf-8"))
         scenario = Scenario.load(resume_dir / "scenario.yaml")
         profile = meta.get("profile", profile)
-        hitl = meta.get("hitl", hitl)
+        mode = meta.get("mode") or meta.get("hitl") or mode
     else:
         scenario = Scenario.load(scenario_path)
 
     try:
         orch = Orchestrator(
-            scenario, profile=profile, hitl=hitl, label=label, resume_dir=resume_dir
+            scenario, profile=profile, mode=mode, label=label, resume_dir=resume_dir
         )
     except HardRuleViolation as exc:
         console.print(f"[red]{exc}[/red]")
@@ -163,9 +163,12 @@ def cmd_run(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="engine.run", description="两仪论工作流")
     parser.add_argument("-s", "--scenario", type=Path, help="场景 YAML 路径")
+    # 档位列表从 PROFILES 取，不写死 —— 写死过一次，加了 demo 档忘了改这里，
+    # 结果是 config 里明明有、命令行却说 invalid choice。
     parser.add_argument("-p", "--profile", default="primary",
-                        choices=["primary", "debug", "contrast_a2", "fallback_cn", "smoke"])
-    parser.add_argument("--hitl", default="off", choices=["off", "minimal", "advised", "full"],
+                        choices=sorted(PROFILES))
+    parser.add_argument("--mode", "--hitl", dest="mode", default="auto",
+                        choices=["auto", "hitl"],
                         help="人工决策点档位：off 全自动 / minimal 两个必停点 / full 再加两个条件触发点")
     parser.add_argument("--baseline", action="store_true", help="只跑 v0 基线")
     parser.add_argument("--label", default="", help="给运行目录加后缀")
@@ -175,10 +178,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.resume:
-        return cmd_run(None, args.profile, args.hitl, args.baseline, args.label, args.resume)
+        return cmd_run(None, args.profile, args.mode, args.baseline, args.label, args.resume)
     if args.check or not args.scenario:
         return cmd_check(args.profile)
-    return cmd_run(args.scenario, args.profile, args.hitl, args.baseline, args.label)
+    return cmd_run(args.scenario, args.profile, args.mode, args.baseline, args.label)
 
 
 if __name__ == "__main__":

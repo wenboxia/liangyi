@@ -90,7 +90,7 @@ def show_step(run_dir: Path, step_id: str) -> None:
             title=f"推理过程（{r['reasoning_tokens']} tokens）", border_style="dim",
         ))
 
-    out = run_dir / "artifacts" / r["output_file"]
+    out = _artifact(run_dir, r["output_file"], r.get("round"))
     if out.exists():
         text = out.read_text(encoding="utf-8")
         console.print(Panel(
@@ -117,10 +117,30 @@ def show_reasoning(run_dir: Path) -> None:
         ))
 
 
-def show_diff(run_dir: Path, a: str, b: str) -> None:
+def _artifact(run_dir: Path, name: str, round_no: int | None = None) -> Path:
+    """
+    找产物。兼容两种布局：加 loop 之前是 artifacts/xxx，之后是 artifacts/round-N/xxx。
+
+    不做这层兼容的后果不是报错，是**静默给出错数据** —— 第二轮跑完之后
+    直接读 artifacts/idea-v5.md 会拿到第一轮的文件，配上第二轮的 trace，
+    输出看起来完全正常。这类不一致比崩溃危险得多。
+    """
     art = run_dir / "artifacts"
-    ta = (art / a).read_text(encoding="utf-8").splitlines()
-    tb = (art / b).read_text(encoding="utf-8").splitlines()
+    if round_no is not None:
+        return art / f"round-{round_no}" / name
+    flat = art / name
+    if flat.exists():
+        return flat                       # 老布局
+    rounds = sorted(art.glob("round-*"), key=lambda d: int(d.name.split("-")[1]))
+    for d in reversed(rounds):            # 新布局：默认取最后一轮
+        if (d / name).exists():
+            return d / name
+    return flat
+
+
+def show_diff(run_dir: Path, a: str, b: str) -> None:
+    ta = _artifact(run_dir, a).read_text(encoding="utf-8").splitlines()
+    tb = _artifact(run_dir, b).read_text(encoding="utf-8").splitlines()
     console.print(f"[bold]{a}[/bold] ({len(ta)} 行) → [bold]{b}[/bold] ({len(tb)} 行)\n")
     shown = 0
     for line in difflib.unified_diff(ta, tb, fromfile=a, tofile=b, lineterm="", n=1):

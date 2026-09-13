@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>两仪 · Liangyi</title>
+<style>
+:root{
+  --bg:#FAF9F5; --ink:#141413; --ink-2:#3D3D3A; --muted:#87867F; --faint:#B0AEA5;
+  --surface:#F0EEE6; --white:#FFFFFF; --line:rgba(20,20,19,.1);
+  --accent:#D97757; --accent-dn:#C6613F; --ok:#4F7C5B;
+  --serif:"Anthropic Serif",Georgia,"Songti SC","Noto Serif SC",serif;
+  --sans:"Anthropic Sans",-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+h1,h2,h3,h4,button,.sans{font-family:var(--sans)}
+h1{font-size:clamp(2.2rem,5vw,3.4rem);font-weight:700;line-height:1.1;letter-spacing:-.01em;margin:0 0 20px}
+h2{font-size:1.75rem;font-weight:700;line-height:1.2;margin:0 0 12px}
+h3{font-size:1.15rem;font-weight:700;margin:0 0 8px}
+p{margin:0 0 16px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:.82rem}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+section{padding:72px 0}
+section+section{border-top:1px solid var(--line)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:5;background:rgba(250,249,245,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:14px;height:60px}
+nav .brand{display:flex;align-items:center;gap:10px;font-family:var(--sans);font-weight:700;font-size:1.05rem;text-decoration:none}
+nav .links{margin-left:auto;display:flex;gap:22px;font-family:var(--sans);font-size:.92rem}
+nav .links a{text-decoration:none;color:var(--ink-2)}
+nav .links a:hover{color:var(--ink)}
+.taiji{width:26px;height:26px;flex:none}
+
+/* hero */
+.hero{padding:84px 0 56px}
+.hero .lede{font-size:1.32rem;line-height:1.5;max-width:720px;margin-bottom:20px}
+.hero .note{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:8px;padding:12px 20px;font-family:var(--sans);font-weight:600;font-size:.95rem;cursor:pointer;transition:background .15s}
+.btn-primary{background:var(--ink);color:var(--bg)}
+.btn-primary:hover{background:#2a2a28}
+.btn-primary:disabled{background:var(--faint);cursor:not-allowed}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:var(--accent-dn)}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface)}
+
+/* entry */
+.entry{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:28px}
+textarea{width:100%;min-height:150px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:16px;font-family:var(--serif);font-size:1.05rem;line-height:1.6;background:var(--bg);color:var(--ink)}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.entry .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.entry .hint{font-family:var(--sans);font-size:.85rem;color:var(--muted)}
+.examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{font-family:var(--sans);font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--bg);cursor:pointer}
+.chip:hover{background:var(--surface)}
+
+/* progress */
+.run{margin-top:28px;display:none}
+.run.on{display:block}
+.summary{display:flex;gap:28px;flex-wrap:wrap;font-family:var(--sans);font-size:.9rem;color:var(--muted);margin:0 0 16px}
+.summary b{color:var(--ink);font-size:1.25rem;font-weight:700;display:block}
+.steps{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--white)}
+.step{border-top:1px solid var(--line)}
+.step:first-child{border-top:none}
+.step-h{display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:center;padding:14px 18px;cursor:pointer;font-family:var(--sans);font-size:.95rem}
+.step-h:hover{background:var(--bg)}
+.step .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--faint);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--faint);background:var(--white)}
+.step.doing .dot{border-color:var(--accent);color:var(--accent)}
+.step.doing .dot::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}
+.step.done .dot{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.step.skip .dot{border-style:dashed}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.step .name b{font-weight:600}
+.step .name small{color:var(--muted);margin-left:8px;font-weight:400}
+.step .who{font-family:var(--mono);font-size:.76rem;color:var(--muted);text-align:right;white-space:nowrap}
+.step .who .coord{color:var(--accent-dn)}
+.step-b{display:none;padding:6px 18px 20px 66px;font-size:.95rem}
+.step.open .step-b{display:block}
+.kv{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-bottom:12px}
+.kv span b{color:var(--ink);font-weight:500}
+.doc{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:16px 20px;max-height:420px;overflow:auto;font-size:.95rem;line-height:1.65}
+.doc h1,.doc h2,.doc h3{font-size:1.02rem;margin:14px 0 6px}
+.doc h1:first-child,.doc h2:first-child,.doc h3:first-child{margin-top:0}
+.doc p{margin:0 0 10px}
+.doc ul,.doc ol{margin:0 0 10px;padding-left:22px}
+.doc table{border-collapse:collapse;width:100%;font-size:.86rem;margin:8px 0 12px}
+.doc th,.doc td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.doc th{background:var(--surface);font-family:var(--sans);font-weight:600}
+.doc code{font-family:var(--mono);font-size:.85em;background:var(--surface);padding:1px 4px;border-radius:4px}
+.subh{font-family:var(--sans);font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:14px 0 6px}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.role{background:var(--surface);border-radius:8px;padding:14px 16px}
+.role b{font-family:var(--sans);display:block;margin-bottom:4px}
+.role.b{background:#FBEFE9}
+@media(max-width:700px){.roles{grid-template-columns:1fr}.step-b{padding-left:18px}.step .who{display:none}}
+
+/* result */
+.result{margin-top:22px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:26px 28px;display:none}
+.result.on{display:block}
+.verdict{display:inline-block;font-family:var(--sans);font-weight:600;font-size:.85rem;padding:5px 12px;border-radius:999px;background:var(--surface);margin-bottom:12px}
+.verdict.warn{background:#FBEFE9;color:var(--accent-dn)}
+.err{background:#FBEFE9;border:1px solid #F0C9BA;color:var(--accent-dn);border-radius:8px;padding:14px 16px;font-family:var(--sans);font-size:.92rem;margin-top:14px;display:none}
+.err.on{display:block}
+
+/* flow */
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:22px 0}
+.fstep{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--sans);font-size:.88rem}
+.fstep .n{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.fstep b{display:block;margin:2px 0 4px}
+.fstep small{color:var(--muted);line-height:1.4;display:block}
+.fstep.stop{border-color:var(--accent)}
+.exits{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:16px}
+.exit{background:var(--surface);border-radius:8px;padding:14px 16px;font-family:var(--sans);font-size:.9rem}
+.exit b{display:block;margin-bottom:4px}
+.exit small{color:var(--ink-2);line-height:1.45;display:block}
+
+/* mechanisms */
+table.t{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.92rem;margin:14px 0 8px}
+table.t th,table.t td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.card h3{margin-bottom:6px}
+.card p{font-size:.98rem;margin:0}
+.card.bad{border-color:#F0C9BA;background:#FDF7F4}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;color:var(--accent-dn);background:#FBEFE9;padding:2px 8px;border-radius:999px;margin-bottom:8px}
+.mech{counter-reset:m}
+.mech .card{position:relative;padding-left:56px}
+.mech .card::before{counter-increment:m;content:counter(m);position:absolute;left:20px;top:20px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--sans);font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center}
+footer{padding:36px 0 56px;border-top:1px solid var(--line);font-family:var(--sans);font-size:.88rem;color:var(--muted)}
+footer a{color:var(--ink-2)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top">
+    <svg class="taiji" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#141413" stroke-width="5"/><path d="M50 4a46 46 0 010 92 23 23 0 010-46 23 23 0 000-46z" fill="#141413"/><circle cx="50" cy="27" r="6.5" fill="#FAF9F5"/><circle cx="50" cy="73" r="6.5" fill="#141413"/></svg>
+    两仪 · Liangyi
+  </a>
+  <div class="links"><a href="#try">试一试</a><a href="#flow">流程</a><a href="#how">机制</a><a id="gh" href="#" target="_blank" rel="noopener">GitHub</a></div>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <h1>一念生两仪，两仪成决策</h1>
+  <p class="lede">AI 产品开发工作流。在关键决策点用两个<b>结构性不同</b>的 AI 产出对抗性输出，由人处理张力并做最终决策——对抗的是 AI 悄悄溶解掉人的独立判断。</p>
+  <p class="note">默认：Claude × 4 + DeepSeek × 2 + GLM × 1 · 跨维度是硬规则，具体模型可替换</p>
+</div></header>
+
+<!-- ============ 入口 ============ -->
+<section id="try"><div class="wrap">
+  <h2>把你的想法跑一遍</h2>
+  <p class="muted" style="margin-bottom:22px">写一段产品想法，看它走完全部 13 步：两个对立的专家各出方案、融合、四轮批判与修订。每一步谁在跑、花了多少、产出了什么都会摊开。</p>
+
+  <div class="entry">
+    <textarea id="seed" placeholder="比如：在葡萄牙旅行时，我要从弗洛雷斯岛坐船到科尔武岛。当地没有订票平台，只能用WhatsApp 联系船长，而天气多变，船只取消率极高。"></textarea>
+    <div class="examples" id="examples"></div>
+    <div class="row">
+      <button class="btn btn-primary" id="go">运行 13 步</button>
+      <span class="hint" id="hint">演示档（三个不同坐标的便宜模型），约 8–10 分钟、几美分。每人每天 3 次。</span>
+    </div>
+    <div class="err" id="err"></div>
+
+    <div class="run" id="run">
+      <div class="summary">
+        <div><b id="s-step">0 / 13</b>步</div>
+        <div><b id="s-time">0:00</b>耗时</div>
+        <div><b id="s-cost">$0.0000</b>花费</div>
+        <div><b id="s-chars">0</b>方案字数</div>
+      </div>
+      <div class="steps" id="steps"></div>
+    </div>
+
+    <div class="result" id="result">
+      <span class="verdict" id="verdict"></span>
+      <h3 id="r-title">最终方案</h3>
+      <div class="doc" id="r-doc" style="max-height:none"></div>
+      <p class="muted" style="margin-top:14px;font-size:.9rem" id="r-note"></p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ 流程 ============ -->
+<section id="flow"><div class="wrap">
+  <h2>十三步，四种收场</h2>
+  <p class="muted">批判步和修改步交替：每一次批判来自一个新开的、坐标不同的窗口；每一次修改都由同一个执笔窗口完成——分歧在审查环节，不在修改环节，否则方案会变成多个 AI 的拼贴。</p>
+  <div class="flow" id="flowlist"></div>
+  <h3>最后一步判定之后</h3>
+  <div class="exits">
+    <div class="exit"><b>产出 v5</b><small>没有致命论据，且大部分批判打的是实施细节——方向站得住，正常结束。</small></div>
+    <div class="exit"><b>回 P1 重做</b><small>两条以上致命论据——方向被推翻，只带原始想法回到起点，整链重跑。</small></div>
+    <div class="exit"><b>回 P2 重压</b><small>致命论据不足两条，但大部分批判都在打前提——成品当作新一轮初稿，只重跑四轮批判。</small></div>
+    <div class="exit"><b>结构性死锁</b><small>第二轮仍有致命论据且议题与第一轮大量重叠——重跑也会撞同一堵墙，停下来出报告。</small></div>
+  </div>
+  <p class="muted" style="margin-top:16px;font-size:.92rem">最多两轮、单链 $3 封顶。循环是工程层的实现；方法论本体的立场是「回不回退由人判断」，这里把它交给了规则。</p>
+</div></section>
+
+<!-- ============ 机制 ============ -->
+<section id="how"><div class="wrap">
+  <h2>为什么是这几个模型</h2>
+  <p class="muted">选型分两件事判：<b>坐标判不判得了</b>（硬规则管这个）、<b>能力够不够用</b>。同坐标的模型共享对齐栈和语料文化，因此共享盲区——全 Claude 覆盖等于假覆盖。</p>
+
+  <table class="t">
+    <tr><th>维度 A · 冲突偏向</th><th>含义</th><th>代表</th></tr>
+    <tr><td><b>A1 规范优先</b></td><td>有一份独立于任务的成文规范，冲突时规范压过任务</td><td>Claude、Gemini</td></tr>
+    <tr><td><b>A2 权限优先</b></td><td>规范是「谁说了算」的权限链，不是价值命题</td><td>GPT</td></tr>
+    <tr><td><b>A3 任务优先</b></td><td>公开材料里没有独立规范层，奖励全部来自任务完成度</td><td>DeepSeek、Kimi、GLM</td></tr>
+    <tr><td class="muted">未公开</td><td class="muted">后训练目标未公开，判不了坐标——<b>不进入任何组合</b></td><td class="muted">Qwen、豆包、MiniMax</td></tr>
+  </table>
+  <p class="muted" style="font-size:.92rem">维度 B · 语料文化：B1 英文母语 / B2 中文母语 / B3 跨文化双核。P2 批判链必须跨至少一维。</p>
+
+  <h3 style="margin-top:34px">七个窗口</h3>
+  <table class="t">
+    <tr><th>窗口</th><th>坐标</th><th>承担</th></tr>
+    <tr><td>执笔</td><td class="mono">A1·B1</td><td>写初版并执行全部修改</td></tr>
+    <tr><td>专家 A</td><td class="mono">A1·B1</td><td>P0 精炼、P1 出方案</td></tr>
+    <tr><td>专家 B</td><td class="mono">A3·B3</td><td>独立出方案，看不到 A</td></tr>
+    <tr><td>投资人批判</td><td class="mono">A1·B1</td><td>新开窗口，没有作者包袱</td></tr>
+    <tr><td>单盲复审</td><td class="mono">A3·B2</td><td>零上下文，只收方案正文</td></tr>
+    <tr><td>知情复审</td><td class="mono">A1·B1</td><td>对照 v1 与 v3 查方向漂移</td></tr>
+    <tr><td>拆台</td><td class="mono">A3·B3</td><td>必须由任务优先坐标承担</td></tr>
+  </table>
+
+  <h3 style="margin-top:34px">参考组合</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">默认</span><h3>Claude + DeepSeek + GLM</h3><p>A1·B1 + A3·B3 + A3·B2。两维都跨，坐标三个各不相同。本站演示用的是同结构的便宜档：GPT + DeepSeek Flash + GLM Flash。</p></div>
+    <div class="card"><span class="tag">替代</span><h3>Claude 不可用</h3><p>整体换成 GPT（A2·B1）做锚。跨冲突偏向仍成立，只是 A 侧不是 A1 极端点。</p></div>
+    <div class="card"><span class="tag">宽松</span><h3>中文侧只有一家</h3><p>单盲和拆台共用同一坐标的不同会话。仍跨中西两侧，但中文侧坍缩成一点，建议单盲的提示词纪律更严。</p></div>
+    <div class="card bad"><span class="tag">违规</span><h3>同坐标全覆盖</h3><p>Claude × 7 不同窗口号，或 Claude + GPT + Gemini。看似独立的四条批判可能一起漏掉同一块维度。硬规则直接拒绝开跑。</p></div>
+  </div>
+
+  <h3 style="margin-top:34px">六条核心机制</h3>
+  <div class="grid2 mech">
+    <div class="card"><h3>四轴 divergence</h3><p>任何一对窗口都应在四个维度不同：AI 身份、角色、上下文、范围。四轴完全一致只是一个批判者，不是两个。</p></div>
+    <div class="card"><h3>P2 链跨底模坐标</h3><p>四轮批判必须跨至少一维。同坐标 = 假覆盖。这一条由代码在开跑前检查，不过不开跑。</p></div>
+    <div class="card"><h3>单盲 = 零上下文</h3><p>单盲窗口只收到方案正文。一旦给背景，它就开始猜意图，机制当场失效。窗口主动拒绝任何注入历史的尝试。</p></div>
+    <div class="card"><h3>作者 ≠ 批判者</h3><p>执笔窗口负责所有修改，批判者和复审者各自新开。一个窗口复用多角色会让机制整体坍塌。</p></div>
+    <div class="card"><h3>Linear 链路防过载</h3><p>一次处理一条批判。四条一起上会逼人同时持有四个框架，必然选择性忽略。</p></div>
+    <div class="card"><h3>知情复审查的是漂移</h3><p>细节错漏属于投资人批判那一轮。知情复审问的是：响应完前两轮之后，是否已从最初的核心定位偏移。</p></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  两仪 · Liangyi &nbsp;·&nbsp; <a id="gh2" href="#" target="_blank" rel="noopener">源码、完整文档与实测案例在 GitHub</a> &nbsp;·&nbsp; 本站演示跑的是完整 13 步的便宜档，正式配置见仓库
+</div></footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const GITHUB = 'https://github.com/wenboxia/liangyi';
+$('#gh').href = GITHUB; $('#gh2').href = GITHUB;
+
+/* ---- 极简 markdown：标题 / 粗体 / 行内代码 / 列表 / 表格 / 段落 ---- */
+function md(src) {
+  const lines = String(src || '').replace(/\r/g, '').split('\n');
+  let out = '', i = 0, para = [];
+  const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const flush = () => { if (para.length) { out += '<p>' + inline(para.join(' ')) + '</p>'; para = []; } };
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|[\s:\-|]+\|\s*$/.test(lines[i + 1])) {
+      flush();
+      const cells = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim()));
+      out += '<table><tr>' + cells(l).map(c => '<th>' + c + '</th>').join('') + '</tr>';
+      i += 2;
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { out += '<tr>' + cells(lines[i]).map(c => '<td>' + c + '</td>').join('') + '</tr>'; i++; }
+      out += '</table>'; continue;
+    }
+    const h = l.match(/^(#{1,4})\s+(.*)/);
+    if (h) { flush(); out += `<h${Math.min(h[1].length + 1, 4)}>${inline(h[2])}</h${Math.min(h[1].length + 1, 4)}>`; i++; continue; }
+    if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      flush(); const ol = /^\s*\d+\./.test(l); out += ol ? '<ol>' : '<ul>';
+      while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) { out += '<li>' + inline(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, '')) + '</li>'; i++; }
+      out += ol ? '</ol>' : '</ul>'; continue;
+    }
+    if (!l.trim()) { flush(); i++; continue; }
+    para.push(l.trim()); i++;
+  }
+  flush(); return out;
+}
+
+/* ---- 静态：13 步说明 + 示例 ---- */
+const EXAMPLES = [
+  "在葡萄牙旅行时，我要从弗洛雷斯岛坐船到科尔武岛。当地没有订票平台，只能用\nWhatsApp 联系船长，而天气多变，船只取消率极高。\n\n真正的麻烦是：普通天气预报只显示温度、降雨和平均风速，但真正影响能不能走的是\n浪高和阵风——这些普通游客既不会查，也看不懂。\n\n从这个小众痛点往外看，它其实是个通用问题：缺一个能评估「点对点行程气象风险」的\n工具。所以我想做一个气象决策助手，不只覆盖海岛船只通航，也拓展到民航航班这类\n大众出行场景，从偏远地区到大城市之间的常规出行都能覆盖。\n\n用户面对气象信息时卡在三个地方：看不懂（数据太专业）、不知道标准（不了解停航或\n取消的行业红线）、做不了决策（没法把预报变成\"能不能走\"）。\n\n我想要的是：把实时气象数据和行业安全红线自动比对，直接给一个\"能不能走\"的结论，\n附上通俗的原因解释和可落地的备选方案。坐船的人最想知道\"船会不会停\"，坐飞机的人\n最想知道\"要不要提前改签或做备选安排\"。\n\n目前只做 MVP，轻量化：不做推送提醒、不用 RAG（规则量很小，直接写进提示词）、\n不用 LangChain（Agent 循环手写）、纯 HTML/CSS/JS 单文件、无登录、只支持未来几天。",
+  "现在人身上挂着一堆订阅——视频会员、音乐、云存储、各种 App 的会员，\n很多是当初图便宜开了年费，后来根本不用，扣钱的时候才想起来还有这个。\n\n想做一个工具，帮人把这些订阅理清楚：还有哪些在扣钱、哪些其实早就不用了、\n哪个该退。",
+  "独立开发者和小团队没有专职运维，线上服务出错时往往是用户先发现、他们后知道，\n然后要在一堆日志里翻半天才能定位原因。\n\n想做一个工具：接上他们的服务之后，报错发生时自动分析原因并给出修复方向，\n让没有运维的人也能及时处理线上问题。",
+];
+const EXAMPLE_LABELS = ['VoyageGuard · 出行前的气象决策助手（作者自己的项目，514 字）', '订阅管理助手', '线上报错诊断助手'];
+$('#examples').innerHTML = EXAMPLES.map((e, k) => `<span class="chip">${esc(EXAMPLE_LABELS[k])}</span>`).join('');
+document.querySelectorAll('.chip').forEach((c, k) => c.onclick = () => { $('#seed').value = EXAMPLES[k]; $('#seed').focus(); });
+
+let PLAN = [];
+fetch('/api/plan').then(r => r.json()).then(p => {
+  PLAN = p;
+  $('#flowlist').innerHTML = p.map((s, k) => `<div class="fstep ${['2C-rollback','2D-fix'].includes(s.id) ? 'stop' : ''}"><span class="n">${k + 1} · ${esc(s.id)}</span><b>${esc(s.title)}</b><small>${esc(s.desc)}</small></div>`).join('');
+}).catch(() => {});
+
+/* ---- 运行 ---- */
+let files = {}, events = {}, t0 = 0, timer = null, cost = 0, doneN = 0;
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+function renderSteps() {
+  $('#steps').innerHTML = PLAN.map((s, k) => `
+    <div class="step" id="st-${s.id}">
+      <div class="step-h" onclick="toggle('${s.id}')">
+        <span class="dot">${k + 1}</span>
+        <span class="name"><b>${esc(s.title)}</b><small>${esc(s.id)}</small></span>
+        <span class="who" id="who-${s.id}"></span>
+      </div>
+      <div class="step-b" id="body-${s.id}"></div>
+    </div>`).join('');
+}
+function toggle(id) { const el = document.getElementById('st-' + id); if (el.classList.contains('done') || el.classList.contains('skip')) el.classList.toggle('open'); }
+
+function fillStep(ev) {
+  const id = ev.step_id, el = document.getElementById('st-' + id);
+  el.classList.remove('doing');
+  el.classList.add(ev.skipped ? 'skip' : 'done');
+  const r = ev.record;
+  if (r) {
+    cost += r.cost_usd;
+    document.getElementById('who-' + id).innerHTML = `${esc(r.model.split('/').pop())} <span class="coord">${esc(r.coordinate)}</span> · ${Math.round(r.duration_ms / 1000)}s · $${r.cost_usd.toFixed(4)}`;
+  } else {
+    document.getElementById('who-' + id).textContent = '跳过';
+  }
+  let body = '';
+  if (r) body += `<div class="kv"><span>产出 <b>${r.content_chars} 字</b></span><span>输入 <b>${r.tokens_in}</b> tok</span><span>输出 <b>${r.tokens_out}</b> tok</span>${r.reasoning_tokens ? `<span>思考 <b>${r.reasoning_tokens}</b> tok</span>` : ''}<span>读取 <b>${esc((r.inputs || []).join('、') || '原始想法')}</b></span></div>`;
+  if (ev.roles) body += `<div class="subh">生成的两个对立角色</div><div class="roles"><div class="role"><b>${esc(ev.roles.role_a)}</b>${esc(ev.roles.stance_a)}</div><div class="role b"><b>${esc(ev.roles.role_b)}</b>${esc(ev.roles.stance_b)}</div></div>${ev.roles.tension ? `<p class="muted" style="font-size:.9rem;margin-top:10px">张力：${esc(ev.roles.tension)}</p>` : ''}`;
+  if (ev.decision_log) body += `<div class="subh">执笔窗口的取舍</div><div class="doc">${md(ev.decision_log)}</div>`;
+  if (ev.content && !ev.roles) body += `<div class="subh">${esc(ev.output_file)}</div><div class="doc">${md(ev.content)}</div>`;
+  document.getElementById('body-' + id).innerHTML = body;
+  if (r && /^idea-v\d/.test(r.output_file || '')) $('#s-chars').textContent = r.content_chars;
+  doneN++; $('#s-step').textContent = `${doneN} / ${PLAN.length}`;
+  $('#s-cost').textContent = '$' + cost.toFixed(4);
+}
+
+async function run() {
+  const seed = $('#seed').value.trim();
+  if (seed.length < 10) { showErr('想法太短了，至少写一句完整的话。'); return; }
+  if (!PLAN.length) { showErr('服务没起来——本地请先运行 python3 web/server.py'); return; }
+  files = {}; events = {}; cost = 0; doneN = 0;
+  $('#err').classList.remove('on'); $('#result').classList.remove('on');
+  $('#run').classList.add('on'); renderSteps();
+  $('#go').disabled = true; $('#go').textContent = '运行中…';
+  t0 = Date.now(); clearInterval(timer);
+  timer = setInterval(() => $('#s-time').textContent = fmt((Date.now() - t0) / 1000), 500);
+  let nextId = PLAN[0].id;
+  try {
+    while (true) {
+      document.getElementById('st-' + nextId)?.classList.add('doing');
+      const res = await fetch('/api/step' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seed, files }) });
+      const r = await res.json();
+      if (!res.ok || r.error) { showErr(r.error || `HTTP ${res.status}`); break; }
+      files = r.files;
+      if (r.event) { events[r.event.step_id] = r.event; fillStep(r.event); }
+      if (r.done) { finish(r); break; }
+      nextId = r.next;
+    }
+  } catch (e) { showErr('连接断了：' + e.message); }
+  clearInterval(timer); $('#go').disabled = false; $('#go').textContent = '再跑一次';
+}
+function showErr(m) { $('#err').textContent = m; $('#err').classList.add('on'); clearInterval(timer); $('#go').disabled = false; $('#go').textContent = '运行 13 步'; }
+
+function finish(r) {
+  const v = r.verdict;
+  const el = $('#verdict');
+  const final = files['artifacts/round-1/idea-v5.md'] || files['artifacts/round-1/P2D-fix-judgment.md'] || '';
+  if (v === 'back-to-p1') { el.textContent = '判定：回 P1 重做'; el.className = 'verdict warn'; $('#r-title').textContent = '拆台专家的判定'; $('#r-note').textContent = '出现了两条以上致命论据——方向被推翻。完整引擎会带着原始想法重跑第二轮；演示到这里为止，上面每一步都可以点开看。'; }
+  else { el.textContent = '判定：产出 v5，框架内消化'; el.className = 'verdict'; $('#r-title').textContent = '最终方案 · v5'; $('#r-note').textContent = `全程 ${fmt((Date.now() - t0) / 1000)}、$${cost.toFixed(4)}。上面每一步都可以点开看它读了什么、产出了什么、改了什么。`; }
+  $('#r-doc').innerHTML = md(final);
+  $('#result').classList.add('on');
+  $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('#go').onclick = run;
+</script>
+</body>
+</html>

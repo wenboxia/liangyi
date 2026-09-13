@@ -258,6 +258,28 @@ def _view(orch, key: str) -> None:
                         border_style="dim"))
 
 
+def _drain_stdin() -> None:
+    """
+    丢掉缓冲区里没被读走的输入。
+
+    2026-09-06 的真实事故：使用者在上一栏结束时多打了一个 `.`，那个字符留在
+    stdin 里没人消费。到下一个提示「粘贴顾问 A 的回答」时它被立刻读走 —— 而
+    `.` 正是终止符，于是 A 栏瞬间结束、内容为空，使用者粘的东西顺位落进了 B 栏。
+
+    这和 09-04 那次是同一类问题：一次输入的残留污染下一个提示。修多行读取只
+    解决了单次读取内部，跨提示的残留要在每个提示开始前清掉。
+
+    只在真终端上做。管道输入（测试、脚本）不能清，那会把喂进来的数据吃掉。
+    """
+    try:
+        import sys
+        import termios
+        if sys.stdin.isatty():
+            termios.tcflush(sys.stdin, termios.TCIFLUSH)
+    except Exception:
+        pass      # 非 Unix 或没有 tty —— 清不了就算了，不该为此中断决策
+
+
 def _read_multiline(hint: str) -> str:
     """
     读多行输入。
@@ -271,6 +293,7 @@ def _read_multiline(hint: str) -> str:
     那样会把输入从中间截断。所以用 Ctrl-D（EOF，粘贴场景的标准做法）、单独一行
     的 `.`（怕 Ctrl-D 的退路）、或连续两个空行。
     """
+    _drain_stdin()
     console.print(f"[dim]{hint}[/dim]")
     console.print("[dim]（多行。粘完按 Ctrl-D 结束；也可以单独一行打 . 或连按两次回车）[/dim]")
 
@@ -308,6 +331,7 @@ def _ask(orch, options: list[tuple[str, str, str]]) -> Decision:
     console.print(f"  [dim]或输入以下任一项查看完整原文（看完会回到这里）：[/dim]")
     console.print(f"  [dim]  {' / '.join(cat)}[/dim]")
 
+    _drain_stdin()
     started = time.time()
     valid = {o[0] for o in options}
     while True:
