@@ -18,7 +18,7 @@
 - [x] `demo` 档（luna + deepseek-flash + glm-4-flash，三坐标各异，$0.08/链）
 - [x] Vercel 包装层：`api/plan.py` `api/step.py` `api/_shared.py` `vercel.json` `.vercelignore`
 - [x] 旧文件归档 `archive/retired-2026-09/`（jsx、旧 README、旧可视化页）
-- [ ] 推 GitHub（保留旧历史）→ Vercel 建项目部署 → 填环境变量 → 线上跑一条完整链 → 线上链接进 README
+- [x] 推 GitHub（旧历史保留为祖先）→ Vercel 部署（Git 自动部署已连）→ 环境变量 + Upstash KV 限次 → **线上跑通一条完整 13 步：8.6 分钟、$0.078，含 P1.0 自动生成角色**（判回 P1，前端如实展示判定书）→ README 已填 https://liangyi-five.vercel.app
 
 **验证程度的实话**：auto 档完整验证；循环三出口只离线验了装置，真实运行没走完过第二轮；hitl 档按 09-08 转向不验（人工节点的价值不可证明）；跨厂商复判没做。
 
