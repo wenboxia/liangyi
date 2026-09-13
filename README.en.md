@@ -1,6 +1,6 @@
 # Liangyi · 两仪
 
-**Try it live →** https://liangyi-wenbo2.vercel.app — type an idea, watch it go through all 13 steps (demo tier, 3 runs per person per day).
+**Try it live →** https://liangyi-five.vercel.app — type an idea, watch it go through all 13 steps (demo tier, 3 runs per person per day).
 
 **One idea, two polarities, one decision.** An AI product-development workflow: at each key decision point, two *structurally different* AI models produce adversarial output; a human resolves the tension and makes the final call.
 
