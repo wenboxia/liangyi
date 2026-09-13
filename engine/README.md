@@ -109,9 +109,10 @@ python -m engine.run --resume runs/20260829-230613-dev-diagnose
 三档：
 
 ```bash
---hitl off       # 全自动。消融实验主线用 —— 保可复现
---hitl minimal   # 两个必停点：2C-rollback / 2D-fix
---hitl full      # 再加两个条件触发点：P0 精炼审 / 范围扩大化
+--mode auto      # 全自动，一次都不停。跑批、可复现
+--mode hitl      # 两个必停点：2C-rollback / 2D-fix，每处给两份旗舰模型的建议再由人定
+
+# 早期的 off / minimal / advised / full 四档已并成上面两档，旧运行目录仍可 --resume
 ```
 
 **必停点**不是"重要的步骤"，是**位置本身就是边界判断**的步骤：

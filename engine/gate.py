@@ -216,14 +216,27 @@ def _scope_once(prompt: str) -> GateResult:
 # minimal  只开两个必停点。日常使用的推荐档
 # full     加上两个条件触发点。高风险 idea 用
 
+# 两档，不是四档。
+#
+# 原来有 off / minimal / advised / full 四档，砍成两档的理由：
+#
+# · minimal（停两次但无顾问）—— 它原本是「有人但无顾问」这个对照臂，
+#   随评测层转向（不再试图证明 HITL 的必要性）已经不需要。
+#
+# · full（多两个条件触发检测器）—— **删的是档位，不是检测器**。
+#   P0 精炼审和范围扩大化检测保留，改成两档都跑影子模式：只记录
+#   「这里本来会触发」，不打断任何人。
+#   理由：这两个检测器判的是「AI 改得对不对」——系统内部的局部判断，
+#   规则就够了。做成会打断人的档位，反而在演示「用规则就够了」，
+#   和 HITL 的论点相反。但它们抓到过真东西（2026-09-06 那条链的
+#   2B-fix 触发过），所以留着 —— 价值在数据里，不在打断里。
 PRESETS: dict[str, set[str]] = {
-    "off": set(),
-    "minimal": {"2C-rollback", "2D-fix"},
-    # advised 停的位置和 minimal 完全相同，差别只在停下来之后多了顾问环。
-    # 停的位置一样是刻意的 —— 两个档位要能直接对照，否则测不出顾问带来的差异。
-    "advised": {"2C-rollback", "2D-fix"},
-    "full": {"2C-rollback", "2D-fix", "P0-review", "scope-creep"},
+    "auto": set(),                              # 全自动，一次都不停
+    "hitl": {"2C-rollback", "2D-fix"},          # 两个必停点 + 顾问环
 }
+
+# 旧运行目录里的 run.json 存的还是老档位名，续跑时要映射过来
+LEGACY_MODES = {"off": "auto", "minimal": "hitl", "advised": "hitl", "full": "hitl"}
 
 
 def enabled(hitl: str, position: str) -> bool:

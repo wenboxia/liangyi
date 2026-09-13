@@ -79,7 +79,7 @@ P2A → 2A-fix → P2B → 2B-fix → P2C → **2C-rollback（必停）** → P2
 `--hitl` 三档：`off` 全自动（消融实验主线用）/ `minimal` 两个必停点 /
 `full` 再加两个条件触发点（P0 忠实性、范围扩大化）。
 
-**已知仍过期、待后续处理**：`Liangyi.jsx`（2835 行双语，维度 A / 窗口分配 / 版本号全是 2026-04 快照）和 `docs/visualizations/liangyi_field_alive_v5.html`。两个文件顶部都有显著过期声明，**读到它们时不要采信其中的模型选型和坐标标注**。注意：jsx 有可能在 Phase F 直接退役（被新的 Web 界面取代），但**它的视觉设计语言要被继承**（水墨风格，见第七节）。
+**已退役（2026-09-13）**：`Liangyi.jsx`、旧 README（`Liangyi.md` / `Liangyi.zh-CN.md`）、`docs/visualizations/` 下的旧页面，全部移入 `archive/retired-2026-09/`，**只作历史快照，不要采信其中的模型选型和坐标标注**。对外入口现在是 `web/index.html` + 顶层 `README.md`。
 
 ---
 
@@ -151,14 +151,16 @@ anchor 又当裁判，等于自己给自己打分；现在 GPT 和 Kimi 都空�
 
 ---
 
-## 七、界面设计语言（Phase D/F 要用）
+## 七、界面设计语言
 
-新的 Web 界面**继承 `Liangyi.jsx` 的视觉语言**（Wenbo 2026-08-30 指定），即使 jsx 本身退役：
+**2026-09-13 改定**：不再沿用 jsx 的水墨风，改照 **anthropic.com 的设计系统**（Wenbo 指定，取值是打开量的，不是凭感觉）：
 
-- **配色**：宣纸 `#F5F1E8` / 暖宣纸 `#FBF7ED` / 墨 `#1A1614` / 中墨 `#3D3530` / 淡墨 `#6B5D4F` / 极淡 `#C8BFB0` / 朱砂 `#A02C2C` / 青黛 `#3E5D6C`
-- **字体**：`Cormorant Garamond` + `Noto Serif SC`（衬线正文）、`JetBrains Mono`（代码）
-- **质感**：SVG 滤镜做毛笔效果（`feTurbulence` + `feDisplacementMap`），墨迹晕染用 `feGaussianBlur`
-- **元素**：太极图 hero、墨点（激活/未激活两态）、波浪下划线、罗马数字标阶段（O / I / II / III / IV）
+- **配色**：页面底 `#FAF9F5` / 正文与深色面 `#141413` / 次级面 `#F0EEE6` / 边框 `1px rgba(20,20,19,.1)` / 次级文字 `#87867F`、`#B0AEA5` / **强调色** `#D97757`（按下 `#C6613F`）
+- **字体**：**正文衬线、标题无衬线**（和常见做法相反，这是它最好认的特征）。正文 20px / 行高 28px，标题 700。字体栈用回退：serif → Georgia / Songti SC / Noto Serif SC；sans → -apple-system / PingFang SC / Arial
+- **形状**：8px 圆角为主，大块 16 / 24px；无阴影、无滤镜
+- **元素**：只保留一个简洁的单色太极图标。毛笔滤镜、朱砂印章、罗马数字标号全部去掉
+
+实现在 `web/index.html`。
 
 ---
 
@@ -170,8 +172,8 @@ liangyi/
 ├── start_prompt.md            · 本文件
 ├── todo.md                    · 工作计划 + 当前状态 + 决策记录（必读）
 ├── .env.example               · API key 模板（.env 已被 gitignore 挡住）
-├── Liangyi.md / .zh-CN.md     · 对外 README（英/中）
-├── Liangyi.jsx                · 旧可视化入口（⚠️ 内容过期、Phase F 定去留）
+├── README.md / README.en.md   · 对外 README（中/英）
+├── web/                       · 在线入口：静态页 + 无状态分步 API（部署说明见 web/DEPLOY.md）
 ├── engine/                    · 工程层（13 步链条 + HITL 三档，21 项结构保证）
 │   ├── README.md              · 工程层说明
 │   └── VALIDATION.md          · 用方法论判据检验实现（14 条）
@@ -182,7 +184,7 @@ liangyi/
 ├── docs/                      · 方法论权威文档
 │   ├── README.md / session-hygiene.md / liangyi-workflow-refined.md
 │   ├── liangyi-auto-variant.md / longterm-and-reference.md
-│   └── visualizations/liangyi_field_alive_v5.html （⚠️ 内容过期）
+│   └── visualizations/        · 案例文档的数据与生成脚本（旧页面已退役至 archive/）
 ├── experiments/               · 六次实验完整归档（原始文件保留、不压缩不删除）
 └── archive/                   · 归档区——确定不会再用到的东西，想清理时可整个删掉
 ```

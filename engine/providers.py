@@ -20,7 +20,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from openai import OpenAI, APIError, APITimeoutError, RateLimitError
+from openai import (OpenAI, APIError, APIConnectionError, APITimeoutError,
+                    InternalServerError, RateLimitError)
 
 from .config import Model, PROVIDERS
 
@@ -88,6 +89,43 @@ def _extract_reasoning(message, provider_field: str) -> str | None:
     return None
 
 
+def _stream_call(client, kwargs: dict, reasoning_field: str):
+    """
+    流式发起一次调用，把 chunk 拼回成和非流式一样的三元组。
+
+    为什么需要流式（2026-09-08 实测）：非流式的长请求会在**第 65 秒**被中间层
+    当成空闲连接掐断，报 `Connection error`（不是 Timeout，所以调大超时没用），
+    而且稳定复现三次。而 P2B 那一步 GLM-5.3 正常要跑 305–676 秒，**必然跨过
+    那个坎**。流式因为一直有数据流动，不会被判定空闲 —— 实测活过 187 秒、
+    7995 个 chunk。
+
+    坑：reasoning_content 和 content 在不同字段里。推理模型可能整段都在
+    reasoning 里、content 一个字都没有 —— 只读 content 会拿到空串，
+    然后触发上层「空返回就加倍 max_tokens 重试」，白跑一轮。
+    """
+    parts, think, usage = [], [], None
+    stream = client.chat.completions.create(**kwargs, stream=True)
+    for chunk in stream:
+        if getattr(chunk, "usage", None):
+            usage = chunk.usage
+        if not chunk.choices:
+            continue
+        d = chunk.choices[0].delta
+        if getattr(d, "content", None):
+            parts.append(d.content)
+        for f in (reasoning_field, "reasoning", "reasoning_content"):
+            v = getattr(d, f, None) or (getattr(d, "model_extra", None) or {}).get(f)
+            if v:
+                think.append(v)
+                break
+    return "".join(parts), "".join(think), usage
+
+
+# 网络类失败（连接中断、5xx、限流）就地重试几次。实测连接失败率约 1/3，
+# 给 5 次机会后单步失败概率降到千分之四以下。
+NET_RETRIES = 5
+
+
 def call(
     model: Model,
     messages: list[dict],
@@ -97,6 +135,7 @@ def call(
     capture_reasoning: bool = True,
     max_attempts: int = 3,
     timeout: float | None = None,
+    stream: bool | None = None,
 ) -> Completion:
     """
     调用一次模型。
@@ -124,14 +163,36 @@ def call(
     last_error: Exception | None = None
     started = time.time()
 
+    def _once():
+        """发一次请求，网络类失败就地重试，不消耗 attempt 预算。
+
+        两种重试必须分开算：
+        · **空返回**要把 max_tokens 加倍再来 —— 那是 attempt 在管的事
+        · **网络抖动**只需要原样再发一次 —— 让它去消耗 attempt，就会顺带把
+          max_tokens 翻上去，一次网络抖动能把 24000 翻成 96000，既贵又可能超模型上限
+
+        实测环境下连接失败率约三分之一，所以这里给 NET_RETRIES 次机会。
+        """
+        net_err: Exception | None = None
+        for net_try in range(NET_RETRIES + 1):
+            try:
+                use_stream = provider.stream if stream is None else stream
+                if use_stream:
+                    c, r, u = _stream_call(client, kwargs, provider.reasoning_field)
+                    return c.strip(), r, u
+                resp = client.chat.completions.create(**kwargs)
+                msg = resp.choices[0].message
+                return ((msg.content or "").strip(),
+                        _extract_reasoning(msg, provider.reasoning_field), resp.usage)
+            except (APIConnectionError, InternalServerError, RateLimitError) as exc:
+                net_err = exc
+                if net_try < NET_RETRIES:
+                    time.sleep(min(2 ** net_try, 15))
+        raise net_err  # type: ignore[misc]
+
     for attempt in range(1, max_attempts + 1):
         try:
-            resp = client.chat.completions.create(**kwargs)
-            message = resp.choices[0].message
-            content = (message.content or "").strip()
-            reasoning = _extract_reasoning(message, provider.reasoning_field)
-
-            usage = resp.usage
+            content, reasoning, usage = _once()
             tokens_in = getattr(usage, "prompt_tokens", 0) or 0
             tokens_out = getattr(usage, "completion_tokens", 0) or 0
             details = getattr(usage, "completion_tokens_details", None)
@@ -160,16 +221,23 @@ def call(
                 attempts=attempt,
             )
 
-        except (RateLimitError, APITimeoutError) as exc:
+        # 可重试：限流、超时、连接中断、对面 5xx —— 都是「再试一次可能就好了」
+        #
+        # APIConnectionError 必须单列在前面。它是 APIError 的子类，本来会落进
+        # 下面那条 break 分支 —— 于是网络一抖就直接放弃，日志还打「试了 3 次」，
+        # 实际一次都没重试。2026-09-09 两条链先后死在 P1B 和 P1.4，就是这个。
+        except (RateLimitError, APITimeoutError,
+                APIConnectionError, InternalServerError) as exc:
             last_error = exc
             if attempt < max_attempts:
                 time.sleep(2 ** attempt)  # 退避重试
                 continue
         except APIError as exc:
             last_error = exc
-            break  # 参数错、模型不存在这类问题重试也没用
+            break  # 参数错、模型不存在这类 4xx 问题重试也没用
 
-    raise RuntimeError(f"{model.id} 调用失败（试了 {max_attempts} 次）：{last_error}")
+    raise RuntimeError(
+        f"{model.id} 调用失败（试了 {attempt} 次）：{type(last_error).__name__}: {last_error}")
 
 
 def preflight(profile: str = "primary") -> dict[str, str]:

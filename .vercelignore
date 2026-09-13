@@ -1,0 +1,24 @@
+# 密钥绝不上传 —— vercel CLI 从本地部署会打包工作目录
+.env
+.env.*
+!.env.example
+*.key
+secrets/
+
+# 运行产出与档案，线上用不到
+runs/
+experiments/
+archive/
+retrospective/
+docs/
+references/
+scenarios/
+.claude/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+todo.md
+start_prompt.md
+CLAUDE.md

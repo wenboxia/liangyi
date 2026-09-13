@@ -1,0 +1,5 @@
+# 引擎运行时依赖。开发/CLI 另需 rich（终端界面）。
+openai>=1.40
+pyyaml>=6.0
+python-dotenv>=1.0
+rich>=13.0

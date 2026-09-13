@@ -1,0 +1,191 @@
+<div class="wrap">
+
+<div class="hero" data-block="hero">
+  <svg class="taiji" viewBox="0 0 100 100" filter="url(#brush)">
+    <circle cx="50" cy="50" r="47" fill="none" stroke="#1A1614" stroke-width="1.6"/>
+    <path d="M50 3a47 47 0 010 94 23.5 23.5 0 010-47 23.5 23.5 0 000-47z" fill="#1A1614"/>
+    <circle cx="50" cy="26.5" r="6.4" fill="#F5F1E8"/>
+    <circle cx="50" cy="73.5" r="6.4" fill="#1A1614"/>
+  </svg>
+  <h1>两仪 · Liangyi</h1>
+  <p class="tag">idea 优化 / AI 产品开发工作流 · 一念生两仪，两仪成决策</p>
+  <p class="def">在关键决策点用两个<b>结构性不同</b>的 AI 产出对抗性输出，由人处理张力并做最终决策。</p>
+  <p class="models" id="model-line"></p>
+</div>
+
+<div class="rule"></div>
+
+<!-- ============ 一 · 入口 ============ -->
+<section id="s1" data-block="入口">
+  <div class="sec-head"><span class="numeral">I</span><h2>入口</h2></div>
+  <p class="sec-lede">输入你自己的想法，看着它一步步走完，最后拿到一份方案。</p>
+  <div class="portal">
+    <h3>把想法交给这条链</h3>
+    <p>完整跑十三步，四轮不同角度的批判，产出一份可以直接用的方案。
+       过程实时可见——每一步是谁在跑、提了什么、改了什么。</p>
+    <a class="portal-btn" id="portal-link" href="#" aria-disabled="true">即将开放</a>
+    <div class="portal-note" id="portal-note"></div>
+  </div>
+</section>
+
+<!-- ============ 二 · 流程与循环 ============ -->
+<section id="s2" data-block="流程与循环">
+  <div class="sec-head"><span class="numeral">II</span><h2>流程与循环</h2></div>
+  <p class="sec-lede">十三步，四条出口。点任意一步看它做什么、谁在跑。</p>
+
+  <div class="fsm" id="fsm"></div>
+  <div class="panel-holder"><div class="act" id="step-detail"></div></div>
+
+  <h3>跑到最后，四种收场</h3>
+  <p class="h3note">走哪条由代码按规则判定，不交给模型自由裁量——判定一旦会翻，整条链就不可复现，也就没法拿来做对照实验。</p>
+  <div id="exits"></div>
+
+  <div id="loop-status"></div>
+
+  <div class="note">
+    <b>这一节展示的是工程层实现。</b>方法论本体的红线里写着「不做完备的循环/回退状态机——那是产品思路，不是方法论思路」。
+    这条循环属于把方法论**做成产品**时补的东西，<em class="k">不代表方法论本体的承诺</em>。
+  </div>
+</section>
+
+<!-- ============ 三 · 参考组合与核心机制 ============ -->
+<section id="s3" data-block="参考组合与核心机制">
+  <div class="sec-head"><span class="numeral">III</span><h2>参考组合与核心机制</h2></div>
+  <p class="sec-lede">跨维度才是硬规则。具体模型名会随市场过期，硬规则不会。</p>
+
+  <h3>底模坐标</h3>
+  <p class="h3note">两个维度。同坐标的模型共享对齐栈和语料文化，也就共享盲区——
+    四条看似独立的批判可能一起漏掉同一块。</p>
+  <div class="scroll"><table id="coord-table"></table></div>
+
+  <h3>七个窗口，各司其职</h3>
+  <div class="scroll"><table id="window-table"></table></div>
+
+  <h3>参考组合</h3>
+  <div class="scroll"><table id="combo-table"></table></div>
+  <div class="note" id="excluded-note"></div>
+
+  <h3>六条核心机制</h3>
+  <div class="mechs" id="mechs"></div>
+</section>
+
+<!-- ============ 四 · 实测 ============ -->
+<section id="s4" data-block="实测">
+  <div class="sec-head"><span class="numeral">IV</span><h2>实测 · VoyageGuard 回溯跑</h2></div>
+  <p class="sec-lede">拿一个<b>已经做完</b>的项目，倒回到它最开始的样子，重新跑一遍这条链，
+    再和当初真做出来的结果对照。</p>
+
+  <p class="lede" id="verdict-line" data-block="实测结论"></p>
+  <div class="stats" id="stats"></div>
+
+  <h3 data-block="原始想法">最开始的想法</h3>
+  <p class="h3note">写任何文档之前的原始想法，本人口述并确认，<span id="seed-chars"></span> 字。
+    下面每一句都要回到这段话来对。</p>
+  <blockquote id="seed-text"></blockquote>
+
+  <h3 data-block="原子点表">拆解为 14 条原子点</h3>
+  <p class="h3note">原子点＝这段话里所有「产品必须做到什么」的主张，逐条拆出来。
+    拆完封存，跑之前不许再改——否则就是看完答案再改题目。
+    拆解、复核、三向审计由互相独立的窗口完成，全部未见过该项目的成品与返工清单。</p>
+  <div class="scroll"><table id="points-table"></table></div>
+
+  <h3 data-block="去向图">十三步之后，这 14 条的去向</h3>
+  <div class="legend">
+    <span><i style="background:var(--keep)"></i>原样保留</span>
+    <span><i style="background:var(--shrunk)"></i>被改小</span>
+    <span><i style="background:var(--broke)"></i>被推翻</span>
+  </div>
+  <div class="river" id="river"></div>
+  <div class="act" id="strand-detail"></div>
+  <div class="note" id="river-note"></div>
+  <div class="scroll"><table id="fate-table"></table></div>
+
+  <h3 data-block="五个修改点">五个修改点，各自换来了什么</h3>
+  <p class="h3note">十三步里真正会改动方案的有五处。每一处都是「一个独立窗口提出批判 → 执笔窗口决定改不改」。</p>
+  <div id="acts"></div>
+
+  <h3 data-block="三方对照">三方对照</h3>
+  <p class="h3note">这 7 条不是「纯人做对的事」，而是<b>项目初期全部判断错误、后来返工修掉的事</b>。
+    这张表问的不是「流程能否追上人」，而是「同样的坑，谁踩了、谁没踩」。</p>
+  <div class="scroll"><table id="three-way"></table></div>
+  <p class="h3note" id="v0-def"></p>
+
+  <div class="note" id="conclusion" data-block="结论"></div>
+
+  <!-- ---- 4.7 细节 ---- -->
+  <h3 style="margin-top:56px">细节</h3>
+  <p class="h3note">上面讲「发生了什么、换来了什么」。下面三块讲「谁在跑、花了多少、凭什么信」。</p>
+
+  <details class="fold" data-block="细节一">
+    <summary><span class="fold-n">一</span><span class="fold-t">逐步执行记录</span>
+      <span class="fold-q">十三步的模型、耗时、成本、逐条取舍</span><span class="fold-c">▸</span></summary>
+    <div class="fold-body">
+      <h3>十三步</h3>
+      <div class="scroll"><table id="cost-table"></table></div>
+      <h3>五处修改的逐条取舍</h3>
+      <div id="ledgers"></div>
+      <h3>链条加了什么原文没有的</h3>
+      <p class="h3note">23 条实质性新增。落在原文留白里的算「原文未定，实现时才定的」，是中性的；
+        不在任何留白里的才是真·新增。</p>
+      <div class="scroll"><table id="adds-table"></table></div>
+      <h3>拆台那一步的分级</h3>
+      <div class="scroll"><table id="grading-table"></table></div>
+      <p id="grading-verdict"></p>
+      <h3>14 条原子点的原文出处</h3>
+      <div class="scroll"><table id="points-src"></table></div>
+    </div>
+  </details>
+
+  <details class="fold" data-block="细节二">
+    <summary><span class="fold-n">二</span><span class="fold-t">运行画像与模型选型</span>
+      <span class="fold-q">各条链的成本、耗时、判定</span><span class="fold-c">▸</span></summary>
+    <div class="fold-body">
+      <h3>跑过的链</h3>
+      <p class="h3note" id="runs-note"></p>
+      <div class="scroll"><table id="runs-table"></table></div>
+      <div class="note" id="runs-caveat"></div>
+      <h3>任务形态决定选型，不只看坐标</h3>
+      <div class="note">
+        同一个模型在不同任务形态上差异极大，选型时必须分开看：<br><br>
+        <b>深度判断类</b>（拆台、批判）→ 推理模型合适，思考得多是优点。<br>
+        <b>长文本产出类</b>（执笔、修订）→ 推理模型吃亏。GLM-5.3 跑一次执笔要 564 秒、
+        思考 12220 token、产出还比对照模型少一半。<br>
+        <b>结构化摘要类</b> → <em class="k">绝不能用推理模型</em>。同一份文档，
+        一次 $0.0004 完成，另一次思考 16001 token 还不出内容。
+      </div>
+      <div class="note">
+        <b>一处不画的东西。</b>运行记录里存了「人在决策点上停留了多久」这个字段，
+        这里不画它，也不拿它当投入程度或疲劳程度的证据。停留时间短可能是想清楚了，
+        也可能是没在想——这个字段区分不了，拿它论证任何一边都是编。
+      </div>
+    </div>
+  </details>
+
+  <details class="fold" data-block="细节三">
+    <summary><span class="fold-n">三</span><span class="fold-t">评测方法与自查</span>
+      <span class="fold-q">污染防护、复判一致率、适用边界</span><span class="fold-c">▸</span></summary>
+    <div class="fold-body">
+      <h3>顺序不可逆</h3>
+      <p>先看链条产出 → 再开原子点 → 最后才开返工清单。<em class="k">先看答案再去产出里找对应，就是自导自演。</em>
+        两把尺子都在跑之前封存：14 条原子点由独立窗口从原始想法拆出，7 条返工项从项目真实开发史里整理。
+        拆原子点的窗口不许看返工清单。</p>
+
+      <h3>这次判定自己有多可靠</h3>
+      <div class="stats" id="reliability-stats"></div>
+      <div id="reliability"></div>
+
+      <h3>结论的适用边界</h3>
+      <div class="note" id="limits"></div>
+
+      <h3>本次自查抓到的五处错</h3>
+      <div class="note" id="selfcheck"></div>
+
+      <h3>方法论合规检验</h3>
+      <p class="h3note">失败的那几条照原样留着。全过的自查不叫自查。</p>
+      <div class="checks" id="checks"></div>
+    </div>
+  </details>
+</section>
+
+<div class="foot" id="foot"></div>
+</div>

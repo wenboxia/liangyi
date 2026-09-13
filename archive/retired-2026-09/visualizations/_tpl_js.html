@@ -1,0 +1,333 @@
+<script>
+const D = window.__DATA__;
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h !== undefined) e.innerHTML = h; return e; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+?)`/g, '<code>$1</code>');
+const tbl = (node, head, rows) => {
+  node.innerHTML = '';
+  if (head) { const tr = el('tr'); head.forEach(h => { const th = el('th', h.cls || '', h.t !== undefined ? h.t : h); tr.appendChild(th); }); node.appendChild(el('thead')).appendChild(tr); }
+  const tb = el('tbody');
+  rows.forEach(r => { const tr = el('tr'); r.forEach(c => { const td = el('td', (c && c.cls) || '', c && c.h !== undefined ? c.h : esc(c)); tr.appendChild(td); }); tb.appendChild(tr); });
+  node.appendChild(tb);
+};
+
+/* ---------- 元信息 ---------- */
+const totalCost = D.steps.reduce((a, s) => a + s.cost, 0);
+const totalSec = D.steps.reduce((a, s) => a + s.sec, 0);
+$('#m-date').textContent = '2026-09-08';
+$('#m-cost').textContent = '$' + totalCost.toFixed(2);
+$('#m-time').textContent = Math.round(totalSec / 60) + ' 分钟';
+$('#m-mode').textContent = '全自动档 · 一次未停';
+
+/* ---------- 层 O ---------- */
+$('#seed-text').innerHTML = esc(D.seed.text).replace(/\n\n+/g, '</p><p>').replace(/^/, '<p>') + '</p>';
+
+const J = D.judging || {};
+const M = J.matrix || {};                     // {v0..v5: {P1:{state,quote,section,note,borderline}}}
+const VERS = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5'];
+const IDS = D.points.map(p => p.id);
+const held = v => IDS.filter(p => M[v] && M[v][p] && M[v][p].state === '守住').length;
+const judgedOK = VERS.every(v => M[v]);
+
+const RH = (D.result && D.result.rework_hits) || [];
+const hit = RH.filter(x => x.hit).length;
+const v0hit = (J.v0_rework || []).filter(x => x.hit).length;
+
+const SEALED_HOLD = Object.values((J.sealed_v5) || {}).filter(x => x === '守住').length;
+$('#verdict-line').innerHTML = judgedOK
+  ? `一段 <em class="k">${D.seed.chars} 字</em>的想法，经过十三步、$${totalCost.toFixed(2)}、
+     ${Math.round(totalSec / 60)} 分钟，长成一份 <em class="k">${D.versions.v5.chars} 字</em>的方案，
+     十五倍长。十四条原子主张里 <em class="k">${held('v5')} 条</em>原样守住，
+     四条被改小，两条被推翻。
+     <br><br>而当年真做这个项目时踩过、后来返工修掉的七个坑，链条
+     <span class="wavy">在结构上避开了 ${hit} 个</span>；
+     同一个想法只问一次模型、不走链条，同样这七个坑<em class="k">只避开 ${v0hit} 个</em>。`
+  : '判定数据尚未生成。';
+
+const stats = [
+  [String(D.points.length), '条原子主张', ''],
+  [judgedOK ? String(held('v5')) : '—', '条原样守住到最后', ''],
+  [hit + '<small>/7</small>', '走链条 · 避开的坑', ''],
+  [v0hit + '<small>/7</small>', '只问一次 · 避开的坑', ''],
+];
+$('#stats').innerHTML = stats.map((s, i) =>
+  `<div class="stat"><div class="n"${i === 3 ? ' style="color:var(--cinnabar)"' : ''}>${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
+
+tbl($('#points-table'), ['#', '这条主张说的是什么', '原文依据'],
+  D.points.map(p => [{ h: `<code>${p.id}</code>`, cls: 'num' }, { h: md(p.text) },
+  { h: `<span style="color:var(--ink-light)">${md(p.source)}</span>` }]));
+
+/* ---------- 曲线 ---------- */
+function curve() {
+  if (!judgedOK) { $('#curve').innerHTML = '<p style="color:var(--ink-light)">判定数据尚未生成。</p>'; return; }
+  const pts = ['v1', 'v2', 'v3', 'v4', 'v5'];
+  const W = 720, H = 250, PL = 52, PR = 24, PT = 22, PB = 46;
+  const x = i => PL + i * (W - PL - PR) / (pts.length - 1);
+  const y = n => PT + (14 - n) * (H - PT - PB) / 14;
+  const vals = pts.map(held);
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px">`;
+  for (let g = 0; g <= 14; g += 2) {
+    s += `<line x1="${PL}" y1="${y(g)}" x2="${W - PR}" y2="${y(g)}" stroke="#C8BFB0" stroke-width=".5" opacity=".55"/>`;
+    s += `<text x="${PL - 10}" y="${y(g) + 4}" text-anchor="end" font-size="10" fill="#6B5D4F" font-family="var(--mono)">${g}</text>`;
+  }
+  // v0 基线：一条横的虚线
+  const b = held('v0');
+  s += `<line x1="${PL}" y1="${y(b)}" x2="${W - PR}" y2="${y(b)}" stroke="#A02C2C" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>`;
+  s += `<text x="${W - PR}" y="${y(b) - 8}" text-anchor="end" font-size="10.5" fill="#A02C2C">单问一次模型（不走链条）= ${b} 条</text>`;
+  s += `<polyline points="${vals.map((v, i) => x(i) + ',' + y(v)).join(' ')}" fill="none" stroke="#1A1614" stroke-width="1.8" stroke-linejoin="round"/>`;
+  vals.forEach((v, i) => {
+    s += `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="#F5F1E8" stroke="#1A1614" stroke-width="1.8"/>`;
+    s += `<text x="${x(i)}" y="${y(v) - 13}" text-anchor="middle" font-size="11.5" fill="#1A1614" font-weight="600">${v}</text>`;
+    s += `<text x="${x(i)}" y="${H - 22}" text-anchor="middle" font-size="11" fill="#3D3530">${pts[i]}</text>`;
+    const step = ({ v2: '2A-fix', v3: '2B-fix', v4: '2C-rollback', v5: '2D-fix' })[pts[i]] || 'P1.4';
+    s += `<text x="${x(i)}" y="${H - 7}" text-anchor="middle" font-size="8.5" fill="#6B5D4F" font-family="var(--mono)">${step}</text>`;
+  });
+  s += '</svg>';
+  $('#curve').innerHTML = s;
+  const drop = vals[0] - vals[vals.length - 1];
+  $('#curve-note').innerHTML = `虚线是对照组：同一个想法只问一次模型、不走链条。
+    <br><br><em class="k">这条曲线往下走，不是坏消息。</em>「守住」的条数不是分数——
+    十四条全守住只意味着没有一条主张被质疑过。链条做的事就是质疑：
+    融合成 v1 时十四条全在，前两轮批判只往里加东西、不动原主张，
+    到<span class="wavy">零上下文单盲复审</span>那一步一次掉了 ${vals[1] - vals[2]} 条，
+    最后一步拆台又掉 ${vals[3] - vals[4]} 条，一共改小 ${drop} 条。
+    <br><br>问题从来不是「掉了几条」，是<em class="k">掉的那几条该不该掉</em>。
+    这个问题在下面两层里逐条摊开。`;
+}
+curve();
+
+/* ---------- 层 I · 时间轴 ---------- */
+const FIX = new Set(['P1.4', '2A-fix', '2B-fix', '2C-rollback', '2D-fix']);
+const STOP = new Set(['2C-rollback', '2D-fix']);
+const WHAT = {
+  'P0': '把原初想法忠实精炼一遍。不改逻辑、不扩展、不质疑——让想法可以被对抗，而不是先对抗它。',
+  'P1.0': '生成两个结构性对立的专家角色。生成完当场检测是不是假对立——两个角色如果只是措辞不同，后面整条对抗链就是空转。',
+  'P1A': '专家 A 视角独立出一份方案。',
+  'P1B': '专家 B 视角独立出一份方案。这个窗口看不到 A 的方案——独立是对抗成立的前提。',
+  'P1.4': '把两份方案融合成单一立场的 v1，不保留双声音的痕迹。',
+  'P2A': '怀疑论投资人视角批判：市场与逻辑上哪里站不住。',
+  '2A-fix': '按批判改出 v2，逐条记下采纳、部分采纳还是不采纳。',
+  'P2B': '零上下文单盲复审。这个窗口永远收不到任何历史，只拿到方案正文——它模拟一个陌生读者，用来暴露知情者看不见的盲区。',
+  '2B-fix': '按单盲意见改出 v3。',
+  'P2C': '知情复审：拿 v1 和 v3 对着看，查方向漂移。它问的不是「哪版更好」，是「产品的身份、承诺、目标用户有没有在不知不觉里换掉」。',
+  '2C-rollback': '把漂移的部分回退，改出 v4。全链唯一一步删多于加。',
+  'P2D': '拆台专家质疑方案的前提。必须由「任务优先」档的模型做——「规范优先」档的模型扮演恶意拆台时，会在最关键那一刀上把攻击软化掉。',
+  '2D-fix': '给每条拆台论据分级，判「框架内改出 v5」还是「回 P1 重做」。这是唯一能让全自动流程卡死的位置。',
+};
+const LOG = {}; D.decision_log.forEach(d => LOG[d.step] = d);
+const CRIT = { 'P2A': 'P2A', 'P2B': 'P2B', 'P2C': 'P2C', 'P2D': 'P2D' };
+const VTAG = v => v.includes('部分') ? 'part' : (v.includes('回退') ? 'back' : (v.includes('保留') ? 'keep' : 'adopt'));
+
+const tl = $('#tl');
+D.steps.forEach((s, i) => {
+  const b = el('button', 'dot' + (FIX.has(s.id) ? ' fix' : '') + (STOP.has(s.id) ? ' stop' : ''),
+    `<i></i><span>${esc(s.id)}</span>`);
+  b.onclick = () => showStep(i);
+  tl.appendChild(b);
+});
+function showStep(i) {
+  document.querySelectorAll('.dot').forEach((d, k) => d.classList.toggle('on', k === i));
+  const s = D.steps[i], lg = LOG[s.id];
+  let h = `<div class="ptop"><span class="pid">${esc(s.id)}</span>
+    <span class="pmodel">${esc(s.model)} · ${esc(s.coordinate)}</span>
+    <span class="pnums">${s.chars} 字 · ${s.sec} 秒 · $${s.cost.toFixed(4)}</span></div>
+    <div class="prole">${esc(WHAT[s.id] || s.role)}</div>`;
+  if (lg && lg.items.length) {
+    h += `<div style="font-size:.8rem;color:var(--ink-light);margin-bottom:4px">
+      逐条取舍（共 ${lg.items.length} 条）</div><div class="ledger">`;
+    lg.items.forEach(it => {
+      h += `<div class="led"><span class="ln">${it.n}</span>
+        <span class="lt"><b>${md(it.title)}</b><div class="lb">${md(it.body.slice(0, 260))}${it.body.length > 260 ? '…' : ''}</div></span>
+        <span class="tag ${VTAG(it.verdict)}">${esc(it.verdict)}</span></div>`;
+    });
+    h += '</div>';
+    if (lg.not_adopted) h += `<div class="lb" style="margin-top:12px"><b style="color:var(--cinnabar)">不采纳的部分：</b>${md(lg.not_adopted.slice(0, 400))}</div>`;
+  } else if (CRIT[s.id]) {
+    h += `<div style="font-size:.85rem;color:var(--ink-light)">这一步只提意见、不改文本。它提的意见去了下一步。</div>`;
+  }
+  $('#step-panel').innerHTML = h;
+}
+showStep(0);
+
+/* ---------- 增删表 ---------- */
+tbl($('#diff-table'),
+  ['步骤', { t: '加', cls: 'num' }, { t: '删', cls: 'num' }, { t: '净', cls: 'num' }, '这一步在干什么'],
+  D.diffs.map(d => {
+    const lg = LOG[d.step] || { items: [] };
+    const cnt = {}; lg.items.forEach(i => cnt[i.verdict] = (cnt[i.verdict] || 0) + 1);
+    const parts = Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join(' · ');
+    return [
+      { h: `<code>${esc(d.step)}</code><br><span style="color:var(--ink-light);font-size:.78rem">${d.from}→${d.to}</span>` },
+      { h: `+${d.added}`, cls: 'num' },
+      { h: `<span style="color:var(--cinnabar)">−${d.removed}</span>`, cls: 'num' },
+      { h: `<b>${d.net > 0 ? '+' : ''}${d.net}</b>`, cls: 'num' },
+      { h: esc(parts) + (d.dropped_headings.length ? `<br><span style="color:var(--cinnabar);font-size:.8rem">整节删除：${d.dropped_headings.map(esc).join('、')}</span>` : '') },
+    ];
+  }));
+
+const rb = D.diffs.find(d => d.step === '2C-rollback');
+$('#rollback-note').innerHTML = `<b>只有一步是往回走的。</b>
+  <code>2C-rollback</code> 删掉 ${rb.removed} 字、加进 ${rb.added} 字，净 <b>${rb.net}</b> 字，
+  是全链唯一一次删多于加。被整节删掉的是
+  <code>${esc((rb.dropped_headings[0] || '').replace(/^#+\s*/, ''))}</code>——
+  那一节是前两步为了回应批判补上去的，
+  知情复审判它「不是产品原生长出来的设计，是为了应付质疑补的」，于是整节退掉。
+  <em class="k">这一步是这条链上最值钱的一步</em>：没有它，交付的会是一份「通过了审查的文档」，
+  而不是原本想做的那个东西。`;
+
+/* ---------- 矩阵 ---------- */
+const CLS = { '守住': 'c-hold', '收窄变形': 'c-narrow', '未守住': 'c-broke', '判不动': 'c-none' };
+const SHORT = { '守住': '守住', '收窄变形': '收窄', '未守住': '未守', '判不动': '判不动' };
+function matrix() {
+  const t = $('#matrix'); t.innerHTML = '';
+  if (!judgedOK) { t.innerHTML = '<tr><td>判定数据尚未生成。</td></tr>'; return; }
+  const hr = el('tr'); hr.appendChild(el('th', 'rowh', ''));
+  VERS.forEach(v => hr.appendChild(el('th', '', v === 'v0' ? 'v0<br><span style="font-weight:400;color:var(--ink-light);font-size:.62rem">基线</span>' : v)));
+  t.appendChild(hr);
+  IDS.forEach(p => {
+    const tr = el('tr');
+    tr.appendChild(el('th', 'rowh', p));
+    VERS.forEach(v => {
+      const td = el('td'); const c = M[v] && M[v][p];
+      const d = el('div', 'cell ' + (c ? CLS[c.state] : 'c-gap'), c ? SHORT[c.state] : '—');
+      if (c) { d.onclick = () => showCell(p, v, c); d.title = `${p} @ ${v}：${c.state}`; }
+      td.appendChild(d); tr.appendChild(td);
+    });
+    t.appendChild(tr);
+  });
+}
+function showCell(p, v, c) {
+  const pt = D.points.find(x => x.id === p) || {};
+  $('#cell-panel').innerHTML = `<div class="ptop"><span class="pid">${p}</span>
+    <span class="pmodel">${v}</span>
+    <span class="pnums" style="color:${c.state === '守住' ? 'var(--indigo)' : c.state === '未守住' ? 'var(--cinnabar)' : 'var(--ink-mid)'}">${esc(c.state)}</span></div>
+    <div class="prole">${md(pt.text || '')}</div>
+    <blockquote class="${c.state === '守住' ? '' : 'cn'}">${esc(c.quote)}
+      <div style="color:var(--ink-light);font-size:.8rem;margin-top:6px">—— ${esc(c.section)}</div></blockquote>
+    <div class="lb">${md(c.note)}</div>
+    ${c.borderline ? `<div class="lb" style="color:var(--cinnabar);margin-top:8px"><b>判据边界模糊：</b>${md(c.borderline)}</div>` : ''}`;
+}
+matrix();
+
+/* ---------- 增补台账 ---------- */
+const FIRST = J.first_seen || {};
+tbl($('#adds-table'), ['#', '链条加进来的主张', '落在哪', { t: '首次出现', cls: 'num' }],
+  D.additions.map(a => [
+    { h: `<code>${a.id}</code>`, cls: 'num' },
+    { h: md(a.title) },
+    { h: a.kind === '留白' ? `<span style="color:var(--ink-light)">${esc(a.where)}</span>` : `<b style="color:var(--cinnabar)">真·新增</b><br><span style="color:var(--ink-light);font-size:.8rem">${esc(a.where).slice(0, 90)}</span>` },
+    { h: FIRST[a.id] || '—', cls: 'num' },
+  ]));
+
+/* ---------- 分级表 ---------- */
+tbl($('#grading-table'), ['#', '论据', '具体性', '严重度', '标签'],
+  D.grading.map(g => [{ h: g.n, cls: 'num' }, { h: md(g.arg) },
+  { h: esc(g.specificity).slice(0, 70) }, { h: esc(g.severity).slice(0, 70) },
+  { h: `<b>${esc(g.label)}</b>` }]));
+const nK = D.grading.filter(g => /^K[（(]/.test(g.severity)).length;
+const nKS = D.grading.filter(g => g.label.includes('Kill shot')).length;
+$('#grading-verdict').innerHTML = `<b>${D.grading.length} 条论据，K 级 ${nK} 条，kill shot ${nKS} 个。</b>
+  全是 F 级——方向没被质疑，全是实施层问题，所以判「框架内改出 v5」，没有触发回 P1。
+  <span style="color:var(--ink-light)">（这里原先记的是 6 条。多出来那条是引擎把表头数了进去，见最后一层。）</span>`;
+
+/* ---------- 层 II ---------- */
+tbl($('#runs-table'), ['场景', '档位', { t: '步', cls: 'num' }, { t: '花费', cls: 'num' }, { t: '耗时', cls: 'num' }, '判定'],
+  D.runs.map(r => [{ h: esc(r.scenario) }, { h: esc(r.mode || '—') },
+  { h: r.steps, cls: 'num' }, { h: '$' + r.cost.toFixed(2), cls: 'num' },
+  { h: r.minutes + ' 分', cls: 'num' },
+  { h: r.verdict === 'back-to-p1' ? '<b style="color:var(--cinnabar)">回 P1 重做</b>' : (r.verdict ? esc(r.verdict) : `<span style="color:var(--ink-light)">${esc(r.status)}</span>`) }]));
+
+tbl($('#cost-table'), ['步骤', '模型', '坐标', { t: '字', cls: 'num' }, { t: '秒', cls: 'num' }, { t: '$', cls: 'num' }],
+  D.steps.map(s => [{ h: `<code>${esc(s.id)}</code>` }, { h: esc(s.model) },
+  { h: `<span style="color:var(--indigo)">${esc(s.coordinate)}</span>` },
+  { h: s.chars, cls: 'num' }, { h: s.sec, cls: 'num' }, { h: s.cost.toFixed(4), cls: 'num' }]));
+
+const SLOTS = [
+  ['执笔 / 专家A / 投资人批判 / 知情复审', 'claude-sonnet-5', 'A1·B1', '规范优先。长文产出和统合是它的强项。'],
+  ['专家B / 拆台', 'deepseek-v4-pro', 'A3·B3', '任务优先。<b>拆台必须由这一档做</b>——规范优先档的模型让它扮演恶意拆台，会在最关键那一刀上把攻击软化掉。这不是提示词不够狠，是底模里那层价值排序在拉手。'],
+  ['零上下文单盲', 'glm-5.3', 'A3·B2', '另一种语料文化。它永远收不到历史，只拿方案正文。'],
+];
+tbl($('#slots-table'), ['槽位', '模型', '坐标', '为什么'],
+  SLOTS.map(s => [{ h: esc(s[0]) }, { h: `<code>${s[1]}</code>` },
+  { h: `<span style="color:var(--indigo)">${s[2]}</span>` }, { h: s[3] }]));
+
+tbl($('#det-table'), ['步骤', '检测器', '模式', '结果'],
+  D.detectors.map(d => [{ h: `<code>${esc(d.step)}</code>` }, { h: esc(d.position) },
+  { h: esc(d.mode) },
+  { h: d.triggered ? '<b style="color:var(--cinnabar)">报警</b>' : `<span style="color:var(--ink-light)">${esc(d.reason)}</span>` }]));
+
+/* ---------- 层 III ---------- */
+const HITS = {}; RH.forEach(h => HITS[String(h.n)] = h);
+const V0H = {}; (J.v0_rework || []).forEach(h => V0H[String(h.item)] = h);
+tbl($('#rework-table'),
+  ['#', '当年的误判', '危险方向', { t: '链条', cls: 'num' }, { t: '基线', cls: 'num' }],
+  D.rework.map(r => {
+    const h = HITS[String(r.n)], b = V0H[String(r.n)];
+    const mk = x => x ? (x.hit ? '<b style="color:var(--indigo)">命中</b>' : '<span style="color:var(--cinnabar)">未命中</span>') : '—';
+    return [{ h: r.n, cls: 'num' }, { h: md(r.error) },
+    { h: `<span style="color:var(--ink-light)">${md(r.danger)}</span>` },
+    { h: mk(h), cls: 'num' }, { h: mk(b), cls: 'num' }];
+  }));
+
+$('#rework-note').innerHTML = `<b>命中的意思是「在结构上避开」，不是「发现了」。</b>
+  当年是先写了八条具体阈值、后来逐条查证才发现有编的。链条的做法反过来——
+  先立「每条规则必须标注出处和可信等级」这个机制，让「编一个数字」在结构上没有位置。
+  <br><br>第 12 条恰好证明了这个区别：机制建好了，但真去填数字时链条同样可能填错，
+  它只保证错的那条会被标成「团队整理的参考估算」，而不是伪装成官方标准。
+  <em class="k">「被诚实标注了」和「不会再发生」是两回事</em>——
+  当年的危险是「该警告时不警告」，标注解决不了这个。所以第 5、12 条判未命中。
+  <br><br>第 9 条是工程实现层的问题，链条只产出想法，到不了那一层。`;
+
+$('#honesty').innerHTML = ((D.result && D.result.honesty) || [])
+  .map((h, i) => `<div class="led"><span class="ln">${i + 1}</span><span class="lt">${md(h)}</span></div>`)
+  .join('') || '<p style="color:var(--ink-light)">—</p>';
+
+const AG = J.v5_agreement || {};
+const OT = J.overturns || [];
+$('#reliability').innerHTML = !AG.total ? '<p style="color:var(--ink-light)">—</p>' : `
+  <div class="stats" style="margin-top:8px">
+    <div class="stat"><div class="n">${AG.agree}<small>/${AG.total}</small></div>
+      <div class="l">v5 一列与封存判定一致</div></div>
+    <div class="stat"><div class="n">${OT.length}</div>
+      <div class="l">格子被复判推翻</div></div>
+    <div class="stat"><div class="n">${Object.values(M).reduce((a,v)=>a+Object.values(v).filter(c=>c.borderline).length,0)}</div>
+      <div class="l">判定者自己标了「边界模糊」</div></div>
+  </div>
+  <div class="note">
+    <b>${AG.agree}/${AG.total} 一致。</b>唯一的分歧是
+    ${(AG.diffs||[]).map(d=>`<code>${d.point}</code>——封存判「${d.sealed}」，这次判「${d.fresh}」`).join('；')}。
+    <em class="k">按更严的一版记：${(AG.diffs||[]).map(d=>d.point).join('、')} 以封存判定为准。</em>
+    <br><br>顺带查出封存文档里第三节的表头写着「守住 8 · 收窄 4」，
+    而它下面那张表逐条数出来是「守住 ${SEALED_HOLD} · 收窄 ${Object.values(J.sealed_v5||{}).filter(x=>x==='收窄变形').length}」——
+    表头和表自己对不上，是上次改判时的算术错。已订正，逐条判定没动。
+  </div>
+  <div class="note">
+    <b>复判推翻了 ${OT.length} 处状态变化。</b>${OT.map(o=>`
+      <code>${o.point}</code> 在 <code>${o.step}</code> 那一步被判成从「${o.from}」变到别的态，
+      复判核对两版原文后改回「${o.to}」`).join('；')}。
+    这三处的共同原因是<em class="k">同一段文本被两次判成了不同的态</em>——
+    是判定噪声，不是方案真的变了。矩阵里显示的是改判后的结果。
+  </div>
+  <div class="note">
+    <b>但这不构成跨厂商独立性。</b>初判者和复判者都是同一家的模型。
+    判据在跑之前封存、判定者互相看不到对方的结论，这两条是真的；
+    「独立到什么程度」这一条，目前只做到了同一家模型的不同实例之间。
+  </div>`;
+
+$('#checks').innerHTML = D.validation.map(v =>
+  `<div class="chk ${v.mark}"><i></i><span class="ct"><span class="cno">${esc(v.no)}</span>${esc(v.title)}
+   ${v.fixed ? '<span class="cfix"> · 已修</span>' : ''}</span></div>`).join('');
+
+$('#foot').innerHTML = `运行目录 <code>runs/20260908-192138-voyageguard-retro</code> ·
+  基线 <code>runs/20260909-081804-voyageguard-v0-baseline</code> ·
+  判据封存于 <code>retrospective/voyageguard/</code> ·
+  本页数据由 <code>docs/visualizations/build_voyageguard_page.py</code> 从原始运行记录生成，未经手工编辑。`;
+
+/* 展开层时把标题滚到视野里 */
+document.querySelectorAll('.layer').forEach(d => d.addEventListener('toggle', () => {
+  if (d.open) setTimeout(() => d.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}));
+</script>
+</body>
+</html>

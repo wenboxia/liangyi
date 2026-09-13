@@ -34,11 +34,10 @@
 
 ### 3. `visualizations/` · 可视化资产
 
-- `liangyi_field_alive_v5.html`：场演化交互图
+- `build_voyageguard_page.py` → `voyageguard-data.json`：从 `runs/` 的原始记录抽出案例数据
+- `build_case_doc.py`：从上面的数据生成 [`case-voyageguard.md`](case-voyageguard.md)，数字不手抄
 
-可以在浏览器打开看。未来写博客或做演讲时是核心视觉资产。
-
-> **⚠️ 内容过期（2026-08-27）**：图里的底模坐标标注（A4·B3 等）和窗口分配（Qwen-1 做单盲）基于 2026-04 的旧维度 A 分类，已被判据更换取代。**场演化叙事本身不受影响**，只有具体模型名和坐标标注过期。与 `Liangyi.jsx` 一并在 Phase 3 统一重做。
+旧的可视化页面（`liangyi_field_alive_v5.html`、`liangyi.html`、`voyageguard-retro.html`）已于 2026-09-13 退役至 `../archive/retired-2026-09/visualizations/`，只作历史快照——里面的模型名和坐标标注是 2026-04 的旧分类。对外页面是 `../web/index.html`。
 
 ### 4. `liangyi-auto-variant.md` · 全自动变种
 
@@ -48,7 +47,17 @@
 
 变种目前是探索阶段、不是成熟方案——4 个场景的实证强度远不够本体的"被证实在大多数情况下有效"门槛。
 
-### 5. `longterm-and-reference.md` · 长期观察与理论借鉴
+### 5. 评测与实测（2026-09 新增）
+
+- `case-voyageguard.md`：拿一个**已经做完的项目**倒回原始想法重跑一遍，和当年真实的返工清单对照。
+  数字全部由 `visualizations/build_case_doc.py` 从运行数据生成。
+- `evaluation.md`：凭什么信上面那个案例——污染防护、复判一致率、这轮自查抓到的五个解析 bug、
+  拆台判定不稳定这条发现。
+- `evaluation-layer-pivot.md`：为什么放弃「证明人工决策点必要」这个原目标（2026-09-08 决策记录）。
+
+工程层的实现细节在 `../engine/PIPELINE.md`，十六条合规检验在 `../engine/VALIDATION.md`。
+
+### 6. `longterm-and-reference.md` · 长期观察与理论借鉴
 
 实战暴露但未到本体修订门槛的观察、以及外部学术 / 工业成果对方法论的引用 / 借鉴 / 反例对照。**实验性的问题记录和外部借鉴都放这里**——不混进本体文档、保持本体稳定性。
 

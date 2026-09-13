@@ -83,13 +83,141 @@ class Scenario:
         }
 
 
+# ---------------------------------------------------------------- 路由
+
+# 出口，从六次手工实验里反推出来的三种真实决定
+EXIT_BACK_P1 = "back-to-p1"       # 方向被推翻，整链重跑（Agent 评测 R2、ExamSniper X/Y R2）
+EXIT_BACK_P2 = "back-to-p2"       # 「v5 还需验证」，只重压 P2 链条（人生决策 R2）
+EXIT_DEADLOCK = "structural-deadlock"   # 重跑也撞同一堵墙（美团：「死循环是结构性的」）
+EXIT_DONE = "done"
+
+# 两道闸
+MAX_ROUNDS = 2          # 既有终止条件；实测触发 3 次，项目史上从无第 3 轮
+MAX_BUDGET_USD = 3.0    # 单链实测 $1.2，两轮约 $2.4。参照大厂「生产环境设预算」实践
+
+# K 占比阈值 —— 判「方向可能错了但没被证死」。
+#
+# 【诚实说明】这条线是在 5 条链上定的：subscription-manager 的 K 占比 100%
+# （5 条论据全指着核心前提打，但 H 级零条 → 0 kill shot → 产出 v5），
+# 其余三条是 17% / 40% / 17%。60% 把它们干净分开。
+# 但 n=5，属于小样本上定的阈值，**不是有理论依据的数**。
+# 跑够 10 条再回看要不要调。
+K_RATIO_THRESHOLD = 0.60
+
+# 议题重叠阈值 —— 判「重跑无效」。
+# 来源：longterm-and-reference.md 实测 Round 1 vs Round 2「60% 底层重叠」，
+# 而美团那次的结论是「P2D-fix 死循环是结构性的」。
+OVERLAP_THRESHOLD = 0.60
+
+# 分级表的数据行 —— **靠内容认，不靠格式认**。
+#
+# 一行是数据行，当且仅当它同时含有一个「具体性」格（H/M）和一个「严重度」格（K/F）。
+# 表头（| 论据 | 具体性 | 严重度 |）和分隔行（|---|---|）都不满足，自然被排除。
+#
+# 这条判据是被同一类 bug 咬了四次之后才定下来的。前三版都在赌模型的格式：
+#   1. 靠「这行没有『论据摘要』四个字」排表头 → 模型写「论据」，表头被数成第 1 条论据
+#   2. 靠第一格是阿拉伯数字认数据行 → 两条链用「一二三四五」编号，整张表数成 0 条
+#   3. 靠标签列字面写着「Kill shot」数致命论据 → 模型写「K+M」「H+F」，数出 0 个
+#   4. 靠第一格是**纯**数字 → 模型把序号和论据挤进同一格（「| 1. "忘了"这个前提错误 |」），
+#      整张表又数成 0 条。这次代价最大：模型正确判出 2 个致命论据、写明回 P1，
+#      **路由看到 0 行直接放行**，第二轮没启动 —— 循环本来要解决的
+#      「系统产出了一个它无法执行的判定」，从解析的缝里漏了回来。
+#
+# p2d_fix.md 只约定了表要有哪几列，从没约定过序号怎么写、标签怎么措辞。
+# **能依赖的只有模型填进那两个格子里的内容。**
+_TABLE_ROW = re.compile(r"^\s*\|.*\|")
+# 格子可能是「H（可核查的反例）」，也可能光写一个「H」。
+# 契约写的是 H/M 和 K/F，但模型会自己发明档位（实测出现过 L「泛泛断言」）。
+# 多认几种写法，判 kill shot 时只有 H / 高 算「具体性高」。
+_SPEC = re.compile(r"^\**([HML]|高|中|低)\**\s*(?:[（(]|$)")
+_SEV = re.compile(r"^\**([KF]|框架|框架级|可修)\**\s*(?:[（(]|$)")
+_HIGH = {"H", "高"}
+_FRAME = {"K", "框架", "框架级"}
+
+
+def _grade_row(line: str) -> tuple[str, str] | None:
+    """一行分级表 → (具体性, 严重度)。不是数据行就返回 None。"""
+    if not _TABLE_ROW.match(line):
+        return None
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    spec = next((m.group(1) for c in cells if (m := _SPEC.match(c))), "")
+    sev = next((m.group(1) for c in cells if (m := _SEV.match(c))), "")
+    return (spec, sev) if spec and sev else None
+
+
+def parse_grading(text: str) -> tuple[int, int, int]:
+    """
+    从 2D-fix 的分级表里数出 (论据数, K 级数, kill shot 数)。
+
+    kill shot = 框架级（K）+ 具体性高（H），由这两格**算**出来，
+    不认标签那一列的字面 —— 见上面 _TABLE_ROW 那段。
+    """
+    seg = text[text.rfind("分级表"):] if "分级表" in text else text
+    graded = [g for line in seg.splitlines() if (g := _grade_row(line))]
+    K = sum(1 for spec, sev in graded if sev in _FRAME)
+    ks = sum(1 for spec, sev in graded if sev in _FRAME and spec in _HIGH)
+    return len(graded), K, ks
+
+
+def grading_anomalies(text: str) -> list[str]:
+    """
+    分级表里**看着像数据行、却没能分级**的行。
+
+    存在的理由：前四次踩的坑全都是「静默数少了」—— 表还在、内容也对，
+    解析漏掉了，路由拿到一个偏小的数就照常放行，不报错。
+    格式还会变，所以与其追格式，不如让漏掉这件事**出声**。
+    """
+    seg = text[text.rfind("分级表"):] if "分级表" in text else text
+    out = []
+    for line in seg.splitlines():
+        if not _TABLE_ROW.match(line) or _grade_row(line):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or all(set(c) <= set("-: ") for c in cells):
+            continue                      # 分隔行
+        if any(c in ("论据", "论据摘要", "具体性", "严重度", "标签", "#", "编号") for c in cells):
+            continue                      # 表头
+        out.append(line.strip()[:120])
+    return out
+
+
+def route(raw: str, round_no: int, overlap: float | None = None) -> tuple[str, str]:
+    """
+    2D-fix 之后走哪个出口。返回 (出口, 一句话理由)。
+
+    **路由由代码按规则做，不由 AI 自由裁量。** 理由是实测出来的：同一份输入
+    让检测器判四次得到 True/True/True/False，加 temperature=0 仍然 3/4。
+    一个会翻的路由器会让 loop 不可复现，而可复现是消融实验的前提。
+
+    AI 负责的是产出信号（分级表、议题重叠度），代码负责按规则路由 ——
+    这也符合方法论自己的判据：边界决策可以「设计时由人做完、用规则消化掉」，
+    前提是规则由人在系统外设计。这张路由表就是那条规则。
+    """
+    total, K, ks = parse_grading(raw)
+    k_ratio = K / total if total else 0.0
+
+    if ks >= 2:
+        if round_no < MAX_ROUNDS:
+            return EXIT_BACK_P1, f"{ks} 个 kill shot，方向被推翻"
+        if overlap is not None and overlap >= OVERLAP_THRESHOLD:
+            return EXIT_DEADLOCK, f"第 {round_no} 轮仍 {ks} 个 kill shot，议题重叠 {overlap:.0%}，重跑无效"
+        return EXIT_DONE, f"第 {round_no} 轮，终止条件兜底强制产出 v5"
+
+    if round_no == 1 and k_ratio >= K_RATIO_THRESHOLD:
+        return EXIT_BACK_P2, f"K 占比 {k_ratio:.0%}（{K}/{total}）但 kill shot 仅 {ks} —— 方向可能错了但没被证死"
+
+    return EXIT_DONE, f"{ks} 个 kill shot、K 占比 {k_ratio:.0%}，框架内消化"
+
+
+# ---------------------------------------------------------------- 编排器
+
 class Orchestrator:
     def __init__(
         self,
         scenario: Scenario,
         *,
         profile: str = "primary",
-        hitl: str = "off",
+        mode: str = "auto",
         run_root: Path | None = None,
         label: str = "",
         resume_dir: Path | None = None,
@@ -102,7 +230,9 @@ class Orchestrator:
 
         self.scenario = scenario
         self.profile = profile
-        self.hitl = hitl
+        # 旧运行目录存的是老档位名（off/minimal/advised/full），续跑时映射过来
+        from .gate import LEGACY_MODES
+        self.mode = LEGACY_MODES.get(mode, mode)
         self.pool = WindowPool(profile)
 
         # 整条链最重要的一个输出：2D-fix 判的是「框架内改」还是「回 P1 重做」。
@@ -110,6 +240,9 @@ class Orchestrator:
         # 里的一句中文。run.json 的 status 一律写 completed，于是按 status 做
         # 汇总的脚本会把「回 P1」那条也算成正常完成，五条链的核心差异被抹平。
         self.verdict: str | None = None
+        self.verdicts: list[str] = []       # 每轮一个
+        self.exit_reason: str = ""
+        self.exit_code: str = EXIT_DONE
 
         if resume_dir is not None:
             # 用户在命令行传的多半是相对路径，统一 resolve —— 否则后面
@@ -123,7 +256,14 @@ class Orchestrator:
             suffix = f"-{label}" if label else ""
             root = run_root or (REPO_ROOT / "runs")
             self.run_dir = root / f"{stamp}-{scenario.id}{suffix}"
-        self.artifacts_dir = self.run_dir / "artifacts"
+        # 轮次。产物按轮分目录 —— 这是 loop 能成立的前提。
+        #
+        # 不分目录的话，第二轮跑 P1 时 idea-v1.md 已经存在，pending() 会把它
+        # 当成「已完成」直接跳过：「第二轮重跑 P1」和「第一轮没跑完」，
+        # 系统分不出来。分了目录之后每轮目录一开始是空的，
+        # pending() / restore() 的逻辑一个字都不用改。
+        self.round = 1
+        (self.run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         self.trace = Trace(
@@ -132,27 +272,79 @@ class Orchestrator:
                 "scenario_id": scenario.id,
                 "scenario_name": scenario.name,
                 "profile": profile,
-                "hitl": hitl,
+                "mode": self.mode,
                 "label": label,
                 "windows": {
                     wid: self.pool._resolve(wid, profile).id for wid in WINDOWS
                 },
             },
         )
+        self._dump_scenario()
+
+    # ---- 产物读写 ----
+
+    @property
+    def artifacts_dir(self) -> Path:
+        """当前轮的产物目录。单轮运行也走 round-1/，不做特例。"""
+        return self.run_dir / "artifacts" / f"round-{self.round}"
+
+    def start_round(self, n: int) -> None:
+        """进入第 n 轮：切目录、开全新窗口。"""
+        self.round = n
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        # 第二轮所有窗口新开 —— 沿用历史三次 round-2 的做法（"所有窗口新开"）。
+        # 理由不是底线规则要求（ZeroContextViolation 拦不住跨轮复用，它只在
+        # inject_history() 里抛，而这里从不调那个方法），而是避免执笔窗口
+        # 带着上一轮的记忆写新方案。
+        self.pool = WindowPool(self.profile)
+
+    def _dump_scenario(self) -> None:
+        """
+        把场景（含角色）写进运行目录。
+
+        **P1.0 生成角色之后必须再调一次。** 原来只在 __init__ 里写一次，那时角色
+        还是空的；P1.0 的 adopt_roles 只改内存对象，从不写回文件。于是任何
+        auto-roles 的运行一续跑，Scenario.load 读回来的 role_a / stance_a 全是空串，
+        专家 A/B 的提示词里角色和立场就是空的 —— voyageguard 那条正是 auto-roles，
+        续跑过一次都没发现，因为它恰好没重跑 P1A/P1B。
+        访客入口每一条都是 auto-roles，这个 bug 会直接把它卡死。
+        """
+        sc = self.scenario
         (self.run_dir / "scenario.yaml").write_text(
             yaml.safe_dump(
                 {
-                    "id": scenario.id, "name": scenario.name, "seed": scenario.seed,
-                    "role_a": scenario.role_a, "stance_a": scenario.stance_a,
-                    "role_b": scenario.role_b, "stance_b": scenario.stance_b,
-                    "tension": scenario.tension,
+                    "id": sc.id, "name": sc.name, "seed": sc.seed,
+                    "role_a": sc.role_a, "stance_a": sc.stance_a,
+                    "role_b": sc.role_b, "stance_b": sc.stance_b,
+                    "tension": sc.tension,
                 },
                 allow_unicode=True, sort_keys=False,
             ),
             encoding="utf-8",
         )
 
-    # ---- 产物读写 ----
+    def _seed_back_to_p2(self) -> None:
+        """
+        出口 B（回 P2）：把 P0/P1 的产物原样带进新一轮，只让 P2 链条重跑。
+
+        **不带的话 P0、P1A、P1B 会被白跑一遍。** pending() 是按「产物文件存不存在」
+        判进度的，新一轮目录一开始是空的；只写 idea-v1.md 的话，那三步的产物不存在
+        → 全部重跑，而消费它们的 P1.4 因为 idea-v1.md 已存在反而被跳过。
+        结果是重新生成的两份专家方案根本不会被用上 —— 白花钱，还在 trace 里留下
+        「像是重做了 P1」的误导记录。
+
+        出口 B 的语义是「方向没被推翻、只是没压够」，所以 P0 精炼和 P1 双专家方案
+        本来就该原样留着，重跑的只有 P2 那四轮批判。
+        """
+        prev_dir = self.run_dir / "artifacts" / f"round-{self.round - 1}"
+        for name in ("P0-refined.md", "P1-roles.yaml",
+                     "P1A-expert-a.md", "P1B-expert-b.md"):
+            src = prev_dir / name
+            if src.exists():
+                self.write_artifact(name, src.read_text(encoding="utf-8"))
+        # 上一轮的 v5 逐字成为本轮的 v1 —— 人生决策那次实测 diff 0 行差异
+        self.write_artifact(
+            "idea-v1.md", (prev_dir / "idea-v5.md").read_text(encoding="utf-8"))
 
     def read_artifact(self, name: str) -> str:
         return (self.artifacts_dir / name).read_text(encoding="utf-8")
@@ -197,7 +389,7 @@ class Orchestrator:
             values[fname] = scenario_data[fname]
 
         if step.id == "2D-fix":
-            values["fix_round"] = "1"
+            values["fix_round"] = str(self.round)
 
         # 用 format_map 而不是 format —— 产物里可能带花括号，不能让它们被当成占位符
         class _Safe(dict):
@@ -267,7 +459,7 @@ class Orchestrator:
         # advised 档位：先跑顾问环，把两份旗舰模型的建议摆出来，再问人。
         # 顾问环失败（两份都空、抽取出错）不挡决策点 —— 人照常裸判。
         advice = None
-        if self.hitl == "advised" and pos in interact.OPTIONS:
+        if self.mode == "hitl" and pos in interact.OPTIONS:
             from . import advisor
             try:
                 advice = advisor.run_advisor_loop(self, pos, interact.OPTIONS[pos])
@@ -331,6 +523,7 @@ class Orchestrator:
             mode="auto-regenerate" if (gate.triggered and attempt == 1) else "auto-passed",
             triggered=gate.triggered, trigger_reason=gate.reason,
             rationale=gate.detail,
+            round=self.round,
         )
 
         if gate.triggered and attempt == 1:
@@ -345,6 +538,7 @@ class Orchestrator:
             )
 
         self.scenario.adopt_roles(data)
+        self._dump_scenario()   # 角色定了就写回去，续跑才读得到
         return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
 
     def execute(self, step: Step) -> str:
@@ -360,6 +554,7 @@ class Orchestrator:
             self.trace.record_decision(
                 step_id=step.id, position="fake-tension", mode="skipped",
                 triggered=False, trigger_reason="场景文件已指定角色，未自动生成",
+                round=self.round,
             )
             return self.read_artifact(step.output)
 
@@ -370,7 +565,7 @@ class Orchestrator:
             raw = self._adopt_generated_roles(raw, step)
 
         # 人工决策点
-        if step.decision_point and enabled(self.hitl, step.decision_point):
+        if step.decision_point and enabled(self.mode, step.decision_point):
             must = step.decision_point in MUST_STOP
             gate = GateResult(step.decision_point, True, "必停点") if must \
                 else self._run_gate(step, raw)
@@ -385,6 +580,7 @@ class Orchestrator:
                         think_ms=decision.think_ms,
                         advice=decision.advice,
                         human_text=f"{decision.instruction}\n{decision.rationale}",
+                        round=self.round,
                     )
                     self.verdict = "back-to-p1"
                     raise BackToP1(decision.rationale or "人判定前提错误，回 P1")
@@ -400,6 +596,7 @@ class Orchestrator:
                     advice=decision.advice if decision else None,
                     human_text=(f"{decision.instruction}\n{decision.rationale}"
                                 if decision else ""),
+                    round=self.round,
                 )
             else:
                 self.trace.record_decision(
@@ -411,8 +608,8 @@ class Orchestrator:
             #
             # 起因是一个尴尬的事实：条件触发检测器至今一次都没真正执行过。七次
             # 运行全是 off 或 minimal，trace 里 21 条相关记录全是「档位未启用」。
-            # 它只在 --hitl full 下才跑，而我们不打算跑 full —— 于是 full 的
-            # 必要性无法验证，等于把一个没执行过的功能摆在那。
+            # 它原来只在 full 档跑，而 full 档已被砍掉 —— 检测器改成两档都跑，
+            # 只记录不打断。
             #
             # 影子模式几乎免费地解决这个问题：_run_gate() 只读 artifact + 调
             # 检测器，不写任何东西；不调 _ask_human() 意味着 off 仍是零人工介入，
@@ -424,7 +621,8 @@ class Orchestrator:
                 self.trace.record_decision(
                     step_id=step.id, position=step.decision_point, mode="auto-passed",
                     triggered=False,
-                    trigger_reason=f"HITL 档位 {self.hitl} 未启用此决策点",
+                    trigger_reason=f"档位 {self.mode} 未启用此决策点",
+                    round=self.round,
                 )
             else:
                 shadow = self._run_gate(step, raw)
@@ -442,7 +640,24 @@ class Orchestrator:
         output_name = step.output
         if step.id == "2D-fix":
             back = detect_p1_return(raw)
+
+            # 代码层硬终止：第 2 轮不论模型判什么，一律强制走框架内修改。
+            #
+            # p2d_fix.md 里本来就写着这条终止条件，但历史上两次都是靠模型
+            # 自己遵守的 —— P2D-fix-judgment.md 里留着模型的原话
+            # 「本应回 P1……但因终止条件强制走框架内修改」。规则该由代码保证。
+            if back and self.round >= MAX_ROUNDS:
+                self.trace.record_decision(
+                    step_id=step.id, position="termination-guard", mode="forced",
+                    triggered=True,
+                    trigger_reason=f"第 {self.round} 轮，代码强制改判为框架内修改",
+                    detail="模型判了回 P1，被终止条件兜底覆盖",
+                    round=self.round,
+                )
+                back = False
+
             self.verdict = "back-to-p1" if back else "produced-v5"
+            self.verdicts.append(self.verdict)
             if back:
                 output_name = "P2D-fix-judgment.md"
 
@@ -457,6 +672,7 @@ class Orchestrator:
             inputs=list(step.artifacts.values()) or list(step.scenario_fields),
             output_file=step.output,
             completion=completion,
+            round=self.round,
         )
 
         return raw
@@ -481,25 +697,101 @@ class Orchestrator:
             skipped.append(step.id)
         return skipped
 
+    # 一步可能写出不止一个产物名。2D-fix 判「回 P1」时写 P2D-fix-judgment.md，
+    # 判「产出 v5」时写 idea-v5.md —— 两者都算这步跑完了。
+    ALT_OUTPUTS = {"2D-fix": ("P2D-fix-judgment.md",)}
+
+    def _step_done(self, step: Step) -> bool:
+        names = (step.output, *self.ALT_OUTPUTS.get(step.id, ()))
+        return any(self.has_artifact(n) for n in names)
+
     def pending(self) -> list[Step]:
-        """还没跑的步骤。"""
-        return [s for s in CHAIN if not self.has_artifact(s.output)]
+        """
+        还没跑的步骤。
+
+        按产物存不存在判，不记进度文件 —— 但产物名不是一步一个：
+        2D-fix 判「回 P1」时不产出 idea-v5.md，而是写一份判定书。
+        只认 step.output 的话，续跑会把这一步当成没跑过重新跑一遍，
+        **而重跑可能给出完全不同的判定**：2026-09-10 那次续跑，
+        同一份 v4 的分级从「5 条 K 级、2 条致命」变成「0 条 K 级」，
+        判定也从回 P1 翻成产出 v5。续跑本该接着走，不该重掷骰子。
+        """
+        return [s for s in CHAIN if not self._step_done(s)]
 
     def run_baseline(self) -> str:
         """跑 v0 基线 —— 单 AI 一次性出方案。"""
         return self.execute(BASELINE)
 
-    def run_chain(self, on_step=None) -> None:
-        for step in self.pending():
-            if on_step:
-                on_step(step)
-            self.execute(step)
+    def run_chain(self, on_step=None, on_round=None) -> None:
+        """
+        跑整条链，必要时按路由结果开新一轮。
+
+        两道闸任一触顶就停下报告，不静默继续：
+        · MAX_ROUNDS  —— 既有终止条件，实测触发 3 次，项目史上从无第 3 轮
+        · MAX_BUDGET  —— 参照大厂「生产环境设预算是个好默认值」的实践
+        """
+        while True:
+            for step in self.pending():
+                if on_step:
+                    on_step(step)
+                self.execute(step)
+
+            exit_code, why = self._decide_next_round()
+            self.exit_reason = why
+            if exit_code == EXIT_DONE or exit_code == EXIT_DEADLOCK:
+                self.exit_code = exit_code
+                return
+
+            spent = sum(r.cost_usd for r in self.trace.steps)
+            if spent >= MAX_BUDGET_USD:
+                self.exit_code = "budget-capped"
+                self.exit_reason = f"已花 ${spent:.2f}，触顶 ${MAX_BUDGET_USD}"
+                return
+
+            self.start_round(self.round + 1)
+            if exit_code == EXIT_BACK_P2:
+                self._seed_back_to_p2()
+            if on_round:
+                on_round(self.round, exit_code, why)
+
+    def _decide_next_round(self) -> tuple[str, str]:
+        """看 2D-fix 的产出决定下一轮走哪个出口。"""
+        for name in ("P2D-fix-judgment.md", "idea-v5.md"):
+            if self.has_artifact(name):
+                break
+        else:
+            return EXIT_DONE, "链未跑到 2D-fix"
+
+        log = (self.run_dir / "decision-log.md")
+        raw = log.read_text(encoding="utf-8") if log.exists() else ""
+        if self.has_artifact("P2D-fix-judgment.md"):
+            raw += self.read_artifact("P2D-fix-judgment.md")
+
+        # 分级表里有看着像数据行却没分上级的 —— 记一笔。
+        # 这类漏行会让论据数偏小，路由拿着偏小的数照常放行，不报错。
+        # 历史上栽过四次，每次都是「表还在、内容也对，就是没数着」。
+        odd = grading_anomalies(raw)
+        if odd:
+            self.trace.record_decision(
+                step_id="2D-fix", position="grading-parse", mode="anomaly",
+                triggered=True,
+                trigger_reason=f"分级表有 {len(odd)} 行没能分级，论据数可能偏小",
+                detail="\n".join(odd), round=self.round,
+            )
+
+        return route(raw, self.round)
 
     def finish(self, status: str = "completed") -> None:
         extra = {"windows": self.pool.summary()}
         # 续跑时链可能还没走到 2D-fix，这时别把已有的判定覆盖成 null
         if self.verdict is not None:
             extra["verdict"] = self.verdict
+        if self.verdicts:
+            extra["verdicts"] = self.verdicts     # 每轮一个
+        extra["rounds"] = self.round
+        if self.exit_reason:
+            extra["exit_code"] = self.exit_code
+            extra["exit_reason"] = self.exit_reason
         self.trace.finish(status=status, extra=extra)
 
     # ---- 输出 ----

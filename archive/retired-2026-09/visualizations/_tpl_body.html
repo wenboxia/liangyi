@@ -1,0 +1,191 @@
+<div class="wrap">
+
+<div class="hero">
+  <svg class="taiji" viewBox="0 0 100 100" filter="url(#brush)">
+    <circle cx="50" cy="50" r="47" fill="none" stroke="#1A1614" stroke-width="1.6"/>
+    <path d="M50 3a47 47 0 010 94 23.5 23.5 0 010-47 23.5 23.5 0 000-47z" fill="#1A1614"/>
+    <circle cx="50" cy="26.5" r="6.4" fill="#F5F1E8"/>
+    <circle cx="50" cy="73.5" r="6.4" fill="#1A1614"/>
+  </svg>
+  <h1>一个想法在十三步里变成了什么</h1>
+  <p class="sub">VoyageGuard · 把一个已完成项目的原初想法，回溯着重跑一遍</p>
+  <p class="meta"><span id="m-date"></span><span>·</span><span id="m-cost"></span><span>·</span><span id="m-time"></span><span>·</span><span id="m-mode"></span></p>
+</div>
+
+<div class="rule"></div>
+
+<div class="portal">
+  <b>这里以后是入口。</b>访客输入自己的想法、选一个档位、按下运行，链条跑完给回一份方案。
+  现在还没接通——跑一条链要十三次模型调用、$1.2、二十八分钟，静态页面做不到这件事，
+  所以这里不放一个按下去没反应的按钮。下面是这条链在一个真实想法上跑完之后的完整记录。
+</div>
+
+<!-- ================= 层 O ================= -->
+<details class="layer" id="L0" open>
+  <summary class="layer-head">
+    <span class="numeral">O</span>
+    <span class="layer-title">这东西干了什么</span>
+    <span class="layer-q">原子点曲线 + 一句话结论</span>
+    <span class="chev">▸</span>
+  </summary>
+  <div class="layer-body">
+    <p class="lede" id="verdict-line"></p>
+
+    <div class="stats" id="stats"></div>
+
+    <h3>原初想法</h3>
+    <p class="h3note">写 PRD 之前的想法，本人口述并确认。刻意不含验收指标、V2 规划、
+      以及任何写 PRD 时才定下的东西。</p>
+    <blockquote id="seed-text"></blockquote>
+
+    <h3>它被拆成了十三条原子点</h3>
+    <p class="h3note">跑之前封存。拆解、复核、三向审计由三批独立的判定者完成，
+      全部没见过成品，也没见过返工清单。编号缺 P4——那条被删了，空号留着便于追溯。</p>
+    <div class="scroll"><table id="points-table"></table></div>
+
+    <h3>还活着几条</h3>
+    <p class="h3note">横轴是方案的每一版，纵轴是十三条原子点里判为「守住」的条数。
+      <span id="curve-note"></span></p>
+    <div id="curve"></div>
+  </div>
+</details>
+
+<!-- ================= 层 I ================= -->
+<details class="layer" id="L1">
+  <summary class="layer-head">
+    <span class="numeral">I</span>
+    <span class="layer-title">它怎么工作的</span>
+    <span class="layer-q">十三步、每步谁在跑、加了删了什么</span>
+    <span class="chev">▸</span>
+  </summary>
+  <div class="layer-body">
+    <h3>十三步</h3>
+    <p class="h3note">空心点是批判步，实心点是执笔步，<span style="color:var(--cinnabar)">朱红</span>是必停点
+      （本次跑的是全自动档，两个必停点都没停）。点一下看那一步做了什么。</p>
+    <div class="tl"><div class="tl-track" id="tl"></div></div>
+    <div class="panel" id="step-panel"></div>
+
+    <h3>每一步加了什么、删了什么</h3>
+    <p class="h3note">字数增减由两版正文逐字比对算出。判定理由取自运行时写下的
+      <code>decision-log.md</code>——它和方案正文物理分离，审查者只看到产品本身，看不到修改痕迹。</p>
+    <div class="scroll"><table id="diff-table"></table></div>
+    <div class="note" id="rollback-note"></div>
+
+    <h3>十三条原子点，逐版四态</h3>
+    <p class="h3note">点格子看引文。落在原文留白里的差异不算偏离——留白是「原文未定」，不是「被改了」。</p>
+    <div class="legend">
+      <span><i style="background:var(--hold)"></i>守住</span>
+      <span><i style="background:var(--narrow)"></i>收窄变形</span>
+      <span><i style="background:var(--broke)"></i>未守住</span>
+      <span><i style="background:var(--nojudge)"></i>判不动</span>
+      <span><i style="border:1px dashed var(--ink-faint)"></i>空号</span>
+    </div>
+    <div class="scroll"><table class="matrix" id="matrix"></table></div>
+    <div class="panel" id="cell-panel">点上面任意一个格子，这里显示那一版的原句。</div>
+
+    <h3>链条加了什么原文没有的</h3>
+    <p class="h3note">二十三条实质性新增。落在十六条原文留白里的算「原文未定，实现时才定的」，
+      是中性的；不在任何留白里的才是真·新增。</p>
+    <div class="scroll"><table id="adds-table"></table></div>
+
+    <h3>拆台那一步的分级</h3>
+    <p class="h3note">最后一步要判的是「框架内改」还是「回 P1 重做」。判据是
+      K 级（打中框架）× H 级（具体性高）＝ kill shot，两个以上就回 P1。</p>
+    <div class="scroll"><table id="grading-table"></table></div>
+    <p id="grading-verdict"></p>
+  </div>
+</details>
+
+<!-- ================= 层 II ================= -->
+<details class="layer" id="L2">
+  <summary class="layer-head">
+    <span class="numeral">II</span>
+    <span class="layer-title">工程上靠不靠谱</span>
+    <span class="layer-q">成本、耗时、选型依据</span>
+    <span class="chev">▸</span>
+  </summary>
+  <div class="layer-body">
+    <h3>跑过的链</h3>
+    <p class="h3note">每条链的成本和耗时。<code>back-to-p1</code> 那条是唯一一次判出
+      「方向被推翻，整链重跑」。</p>
+    <div class="scroll"><table id="runs-table"></table></div>
+
+    <h3>这一条链，每步花了多少</h3>
+    <div class="scroll"><table id="cost-table"></table></div>
+
+    <h3>为什么是这几个模型</h3>
+    <p class="h3note">选型分两件事判，不混在一起：<em class="k">坐标判不判得了</em>（硬规则管这个）、
+      <em class="k">能力够不够用</em>（任务形态管这个）。</p>
+    <div class="scroll"><table id="slots-table"></table></div>
+    <div class="note">
+      <b>任务形态决定选型，不只看坐标。</b>同一个模型在不同任务形态上差异极大：
+      深度判断类（拆台、批判）用推理模型合适，思考得多是优点；
+      长文本产出类（执笔、修订）推理模型吃亏——GLM-5.3 跑一次执笔要 564 秒、
+      思考 12220 token、产出还比对照模型少一半；
+      结构化摘要类<em class="k">绝不能用推理模型</em>——同一份文档，一次 $0.0004 完成，
+      另一次思考 16001 token 还不出内容。
+    </div>
+    <div class="note">
+      <b>一处不画的东西。</b>运行记录里存了「人在决策点上停留了多久」这个字段，
+      这张页面不画它，也不拿它当投入程度或疲劳程度的证据。
+      停留时间短可能是想清楚了，也可能是没在想——这个字段区分不了，
+      拿它论证任何一边都是编。
+    </div>
+
+    <h3>影子检测器</h3>
+    <p class="h3note">两个检测器（精炼是否忠实、修改范围是否扩大化）在所有档位都跑，
+      但只记录不打断。这一条链上它们一次都没报警。</p>
+    <div class="scroll"><table id="det-table"></table></div>
+  </div>
+</details>
+
+<!-- ================= 层 III ================= -->
+<details class="layer" id="L3">
+  <summary class="layer-head">
+    <span class="numeral">III</span>
+    <span class="layer-title">你怎么知道你的评测可信</span>
+    <span class="layer-q">污染防护、复判、自查抓到了什么</span>
+    <span class="chev">▸</span>
+  </summary>
+  <div class="layer-body">
+    <h3>顺序不可逆</h3>
+    <p>先看链条产出 → 再开原子点 → 最后才开返工清单。<em class="k">先看答案再去产出里找对应，
+      就是自导自演。</em>两把尺子都在跑之前封存：十三条原子点由独立判定者从原初想法拆出，
+      七条返工项从项目真实开发史里整理。拆原子点的人不许看返工清单。</p>
+
+    <h3>对照真实的返工清单</h3>
+    <p class="h3note">这七条是当年做 VoyageGuard 时真犯过、后来返工修掉的错。
+      链条跑的是原初想法，它看不到成品——所以只有这七条在可对照范围内。</p>
+    <div class="scroll"><table id="rework-table"></table></div>
+    <div class="note" id="rework-note"></div>
+
+    <h3>这次逐版判定，自己有多可靠</h3>
+    <p class="h3note">上面那张矩阵是这次新做的。它的最后一列（v5）和几个月前
+      封存下来的那一列判的是同一件事——两者对不对得上，就是这张矩阵的可信度。</p>
+    <div id="reliability"></div>
+
+    <h3>十六条方法论合规检验</h3>
+    <p class="h3note">失败的那几条照原样留着。全过的自查不叫自查。</p>
+    <div class="checks" id="checks"></div>
+
+    <h3>这一次自查抓到的三处错</h3>
+    <div class="note">
+      <p><b>一、引擎把表头当成了一条论据。</b>分级表的行过滤靠「这行里没有『论据摘要』四个字」
+      来排掉表头，但输出契约只约定了列，没约定表头逐字怎么写。模型这次写的是「论据」，
+      于是<em class="k">表头被当成第 1 条论据数了进去</em>——五条论据被数成六条，还写进了结果文档。
+      后果不止是数字难看：K 占比是 K/总数，分母灌水会系统性压低占比，
+      让「回 P2」这个出口比它该有的更难触发。已修，回归测试覆盖八条历史链。</p>
+      <p><b>二、版本曲线拿字节冒充字数。</b>原先记的是 10427→21592，那是字节数，
+      中文一个字三字节。真实字数是 3807→7688。拿它和「原初想法 514 字」并排，
+      等于用字节比字符。已订正。</p>
+      <p style="margin-bottom:0"><b>三、二十三条新增的原始证据只躺在临时目录里。</b>
+      它是「方法论到底加了什么」这个问题的主体答案，一次清理就没了。已落进仓库。</p>
+    </div>
+
+    <h3>诚实标注</h3>
+    <div id="honesty"></div>
+  </div>
+</details>
+
+<div class="foot" id="foot"></div>
+</div>

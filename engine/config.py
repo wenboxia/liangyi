@@ -40,6 +40,11 @@ class Provider:
     # 431s / 487s / 535s —— 第三条链已经贴着 600s 的边，第四条越过去直接超时。
     # 这不是间歇故障，是阈值本来就卡在实测分布的尾巴上。
     timeout: float = 600.0
+    # 是否用流式请求。非流式的长请求会在第 65 秒被中间层当成空闲连接掐断
+    # （报 Connection error 而非 Timeout，所以调大超时没用），而 GLM-5.3 在
+    # 盲审那一步正常要跑 305-676 秒，必然跨过那个坎。流式一直有数据流动，
+    # 不会被判空闲。只给需要的 provider 开 —— 流式会丢一部分 usage 字段。
+    stream: bool = False
 
     @property
     def api_key(self) -> str | None:
@@ -72,6 +77,7 @@ PROVIDERS: dict[str, Provider] = {
         env_key="ZHIPU_API_KEY",
         reasoning_field="reasoning_content",
         timeout=1800.0,  # GLM-5.3 慢，见 Provider.timeout 上的说明
+        stream=True,     # 见 Provider.stream：非流式长请求会被掐断
     ),
 }
 
@@ -205,6 +211,21 @@ PROFILES: dict[str, dict[str, str]] = {
         "anchor": "glm-4-flash",
         "divergent_a": "deepseek-v4-flash",
         "divergent_b": "kimi-k2.5",
+    },
+
+    # 在线体验入口用的档 —— 访客输入自己的想法，跑完整 13 步。
+    #
+    # 和 smoke / debug 的区别是**三个坐标各不相同**：smoke 和 debug 的两个批判位
+    # 都是 A3·B3，同坐标。拿一个主打「跨维度对抗」的流程去演示，
+    # 却用同坐标配置，说不过去 —— 硬规则能过，但演示本身就成了反例。
+    #
+    # 挑这三个的另一个理由是快和便宜：正式档一条链 31 分钟、$1.2，
+    # 访客不会在网页上等那么久，而且每次点击花的是项目的钱。
+    # glm-4-flash 免费，deepseek flash 是 pro 的八分之一价。
+    "demo": {
+        "anchor": "gpt-5.6-luna",          # A2·B1
+        "divergent_a": "deepseek-v4-flash",  # A3·B3
+        "divergent_b": "glm-4-flash",        # A3·B2
     },
 }
 
