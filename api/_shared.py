@@ -26,8 +26,9 @@ for p in (ROOT, ROOT / "web"):
 
 DAILY_LIMIT = int(os.getenv("LIANGYI_DAILY_LIMIT", "3"))
 OWNER_TOKEN = os.getenv("LIANGYI_OWNER_TOKEN", "")
-KV_URL = os.getenv("KV_REST_API_URL", "")
-KV_TOKEN = os.getenv("KV_REST_API_TOKEN", "")
+# Upstash 集成注入的变量名有两套，哪套在就用哪套
+KV_URL = os.getenv("KV_REST_API_URL") or os.getenv("UPSTASH_REDIS_REST_URL") or ""
+KV_TOKEN = os.getenv("KV_REST_API_TOKEN") or os.getenv("UPSTASH_REDIS_REST_TOKEN") or ""
 
 _mem: dict[str, list[float]] = defaultdict(list)
 
