@@ -43,3 +43,8 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# Vercel 本地链接信息
+.vercel/
+.vercel
+.env*

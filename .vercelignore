@@ -22,3 +22,5 @@ venv/
 todo.md
 start_prompt.md
 CLAUDE.md
+web/server.py
+web/DEPLOY.md

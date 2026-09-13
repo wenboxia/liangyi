@@ -1,18 +1,46 @@
-"""POST /api/step —— 链条走一步。请求/响应形状与 web/server.py 完全一致。"""
-import json
-import os, sys
-from http.server import BaseHTTPRequestHandler
+"""
+Vercel 入口 —— 一个 handler 服务三条路由，形状与 web/server.py 完全一致：
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # 不赌 Vercel 把 api/ 放进 sys.path
+    GET  /            静态页（自己读 web/index.html，不依赖平台的静态托管）
+    GET  /api/plan    13 步说明
+    POST /api/step    链条走一步
+
+Vercel 的 Python 运行时（CLI 59+）要求 pyproject.toml 里指定唯一入口，
+不再把 api/ 下每个文件各当一个函数，所以原来的 plan.py / step.py 合到这里。
+限次逻辑在 _shared.py：配了 KV 就跨实例计数，没配退回内存计数并在响应头标明。
+"""
+import json
+import os
+import sys
+from http.server import BaseHTTPRequestHandler
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from _shared import DAILY_LIMIT, allow_new_chain, client_ip, is_owner, send_json  # noqa: E402
-from chain_api import run_one_step  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _shared import DAILY_LIMIT, ROOT, allow_new_chain, client_ip, is_owner, send_json  # noqa: E402
+from chain_api import plan, run_one_step  # noqa: E402
+
+INDEX = ROOT / "web" / "index.html"
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path == "/api/plan":
+            return send_json(self, 200, plan())
+        if path in ("/", "/index.html"):
+            body = INDEX.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
+        return send_json(self, 404, {"error": "not found"})
+
     def do_POST(self):
         u = urlparse(self.path)
+        if u.path != "/api/step":
+            return send_json(self, 404, {"error": "not found"})
         n = int(self.headers.get("Content-Length", "0"))
         try:
             req = json.loads(self.rfile.read(n) or b"{}")
