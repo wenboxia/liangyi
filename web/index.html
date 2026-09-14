@@ -154,7 +154,9 @@ table.t th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04
 .flowsum p{margin:0 0 10px;font-size:.95rem;line-height:1.7}
 .flowsum p:last-child{margin:0}
 .diagram{overflow-x:auto;margin:6px 0 10px;padding:14px;background:#fff;border:1px solid var(--border);border-radius:12px}
-.diagram .mermaid{min-width:1400px;margin:0}
+.diagram .mermaid{margin:0;display:inline-block}
+.diagram svg{max-width:none!important;height:auto}
+.diagram-hint{font-size:.8rem;color:var(--muted);margin:-4px 0 12px}
 .legend .lg{display:inline-block;padding:1px 8px;border-radius:4px;border:1px solid;font-family:var(--sans);font-size:.8rem;margin-right:2px}
 .lg-a{background:#F0EEE6;border-color:#B0AEA5}.lg-b{background:#E8EEF3;border-color:#8FA3B3}.lg-c{background:#EAF1EA;border-color:#8FB08F}.lg-h{background:#FBEFE9;border-color:#D97757}
 .mech{counter-reset:m}
@@ -300,6 +302,7 @@ flowchart LR
   class EC exitC
   class END,V5 done
   </pre></div>
+  <p class="diagram-hint">← 横向滚动看整张图 →</p>
   <p class="muted legend">图例：<span class="lg lg-a">anchor</span> 执笔 / 专家 A / 投资人 / 知情复审　<span class="lg lg-b">divergent_a</span> 专家 B / 拆台　<span class="lg lg-c">divergent_b</span> 单盲　<span class="lg lg-h">HITL 停点</span> auto 自动通过，hitl 停下等你　虚线 = 回边。两个档位走同一张图。演示档：anchor = gpt-5.6-luna（A2·B1）、divergent_a = deepseek-v4-flash（A3·B3）、divergent_b = glm-4-flash（A3·B2）。</p>
   <p class="muted">批判步和修改步交替：每一次批判来自一个新开的、坐标不同的窗口；每一次修改都由同一个执笔窗口完成——分歧在审查环节，不在修改环节，否则方案会变成多个 AI 的拼贴。</p>
   <div class="flow" id="flowlist"></div>
@@ -363,7 +366,7 @@ flowchart LR
 </div></footer>
 
 <script>
-if (window.mermaid) mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose', flowchart: { curve: 'basis', nodeSpacing: 28, rankSpacing: 40 } });
+if (window.mermaid) mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose', flowchart: { curve: 'basis', nodeSpacing: 26, rankSpacing: 44, useMaxWidth: false } });
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const GITHUB = 'https://github.com/wenboxia/liangyi';
