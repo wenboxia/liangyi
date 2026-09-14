@@ -1,0 +1,57 @@
+flowchart LR
+  classDef anchor fill:#F0EEE6,stroke:#B0AEA5,color:#141413
+  classDef divA fill:#E8EEF3,stroke:#8FA3B3,color:#141413
+  classDef divB fill:#EAF1EA,stroke:#8FB08F,color:#141413
+  classDef hitl fill:#FBEFE9,stroke:#D97757,stroke-width:2px,color:#141413
+  classDef route fill:#FFF7DD,stroke:#C9A227,color:#141413
+  classDef exitA fill:#F8DADA,stroke:#B04141,color:#141413
+  classDef exitB fill:#DDEFF3,stroke:#3E7A8C,color:#141413
+  classDef exitC fill:#E6E6E6,stroke:#666,color:#141413
+  classDef done fill:#141413,stroke:#141413,color:#FAF9F5
+
+  SEED([原初想法]) --> P0
+
+  subgraph S1["P1 · 对抗式方案生成"]
+    direction LR
+    P0["P0 忠实精炼<br/>anchor"] --> P10["P1.0 生成对抗角色<br/>anchor · 假对立检测"]
+    P10 -. 假对立 → 重生成 ≤1 次 .-> P10
+    P10 --> P1A["P1A 专家 A<br/>anchor"]
+    P10 --> P1B["P1B 专家 B<br/>divergent_a · 与 A 互不可见"]
+    P1A --> P14["P1.4 融合 → v1<br/>anchor 执笔"]
+    P1B --> P14
+  end
+
+  subgraph S2["P2 · 四轮批判链（批判换窗口，修改同一执笔）"]
+    direction LR
+    P2A["P2A 投资人批判<br/>anchor · 新窗口"] --> AF["2A-fix → v2<br/>执笔"]
+    AF --> P2B["P2B 零上下文单盲<br/>divergent_b · 只见正文"]
+    P2B --> BF["2B-fix → v3<br/>执笔"]
+    BF --> P2C["P2C 知情复审<br/>anchor · 对照 v1/v3 查漂移"]
+    P2C --> CR["2C-rollback → v4<br/>执笔 · HITL 停点 ①"]
+    CR -. "hitl：指定回退 / 指定保留<br/>带指令重跑本步" .-> CR
+    CR --> P2D["P2D 拆台<br/>divergent_a · 只攻前提"]
+    P2D --> DF["2D-fix 分级判定 → v5<br/>执笔 · HITL 停点 ②"]
+    DF -. "hitl：框架内改<br/>带指令重跑本步" .-> DF
+  end
+
+  P14 --> P2A
+  DF --> R1{"致命论据 ≥ 2？<br/>（K 级 × 具体性高）<br/>hitl 可直接选「回 P1」"}
+  R1 -- 否 --> V5["产出 v5"]
+  R1 == 是 · 第 1 轮 ==> EA["出口 A · 回 P1<br/>整链重跑，只带原初想法"]
+  R1 == 是 · 第 2 轮 · 议题重叠 ≥ 60% ==> EC(["出口 C · 结构性死锁<br/>停下出报告"])
+  R1 == 是 · 第 2 轮 · 重叠 < 60% ==> FORCE["终止条件兜底<br/>代码强制产出 v5"] --> V5
+  V5 --> R2{"K 占比 ≥ 60%<br/>且第 1 轮？"}
+  R2 == 是 ==> EB["出口 B · 回 P2<br/>v5 当新初稿，只重跑批判链"]
+  R2 -- 否 --> END([结束])
+  EA -. 新一轮 · 窗口全新开 .-> P0
+  EB -. 新一轮 · 窗口全新开 .-> P2A
+
+  class P0,P10,P1A,P14,P2A,AF,BF,P2C anchor
+  class P1B,P2D divA
+  class P2B divB
+  class CR,DF hitl
+  class R1,R2 route
+  class EA exitA
+  class EB exitB
+  class EC exitC
+  class END,V5 done

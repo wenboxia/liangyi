@@ -48,20 +48,77 @@ python3 -m engine.inspect runs/<运行目录> --diff idea-v1.md idea-v5.md
 
 在线入口本地起：`python3 web/server.py`，然后打开 `http://127.0.0.1:8765`。
 
-## 十三步
+## 十三步 · 状态机
 
-```
-P0    忠实精炼          把原始想法精炼一遍，不改逻辑、不扩展、不质疑
-P1.0  生成对抗角色      两个结构性对立的专家角色，带假对立检测
-P1A   专家 A 出方案     ┐ 互不可见，坐标不同
-P1B   专家 B 出方案     ┘
-P1.4  融合成 v1         执笔窗口合成单一立场
+```mermaid
+flowchart LR
+  classDef anchor fill:#F0EEE6,stroke:#B0AEA5,color:#141413
+  classDef divA fill:#E8EEF3,stroke:#8FA3B3,color:#141413
+  classDef divB fill:#EAF1EA,stroke:#8FB08F,color:#141413
+  classDef hitl fill:#FBEFE9,stroke:#D97757,stroke-width:2px,color:#141413
+  classDef route fill:#FFF7DD,stroke:#C9A227,color:#141413
+  classDef exitA fill:#F8DADA,stroke:#B04141,color:#141413
+  classDef exitB fill:#DDEFF3,stroke:#3E7A8C,color:#141413
+  classDef exitC fill:#E6E6E6,stroke:#666,color:#141413
+  classDef done fill:#141413,stroke:#141413,color:#FAF9F5
 
-P2A   投资人批判        市场与商业逻辑          → 2A-fix 改出 v2
-P2B   零上下文单盲复审   只拿到正文的陌生读者    → 2B-fix 改出 v3
-P2C   知情复审          对照 v1 与 v3 查方向漂移 → 2C-rollback 回退，改出 v4
-P2D   拆台专家          只攻前提，不挑细节      → 2D-fix 分级判定，改出 v5
+  SEED([原初想法]) --> P0
+
+  subgraph S1["P1 · 对抗式方案生成"]
+    direction LR
+    P0["P0 忠实精炼<br/>anchor"] --> P10["P1.0 生成对抗角色<br/>anchor · 假对立检测"]
+    P10 -. 假对立 → 重生成 ≤1 次 .-> P10
+    P10 --> P1A["P1A 专家 A<br/>anchor"]
+    P10 --> P1B["P1B 专家 B<br/>divergent_a · 与 A 互不可见"]
+    P1A --> P14["P1.4 融合 → v1<br/>anchor 执笔"]
+    P1B --> P14
+  end
+
+  subgraph S2["P2 · 四轮批判链（批判换窗口，修改同一执笔）"]
+    direction LR
+    P2A["P2A 投资人批判<br/>anchor · 新窗口"] --> AF["2A-fix → v2<br/>执笔"]
+    AF --> P2B["P2B 零上下文单盲<br/>divergent_b · 只见正文"]
+    P2B --> BF["2B-fix → v3<br/>执笔"]
+    BF --> P2C["P2C 知情复审<br/>anchor · 对照 v1/v3 查漂移"]
+    P2C --> CR["2C-rollback → v4<br/>执笔 · HITL 停点 ①"]
+    CR -. "hitl：指定回退 / 指定保留<br/>带指令重跑本步" .-> CR
+    CR --> P2D["P2D 拆台<br/>divergent_a · 只攻前提"]
+    P2D --> DF["2D-fix 分级判定 → v5<br/>执笔 · HITL 停点 ②"]
+    DF -. "hitl：框架内改<br/>带指令重跑本步" .-> DF
+  end
+
+  P14 --> P2A
+  DF --> R1{"致命论据 ≥ 2？<br/>（K 级 × 具体性高）<br/>hitl 可直接选「回 P1」"}
+  R1 -- 否 --> V5["产出 v5"]
+  R1 == 是 · 第 1 轮 ==> EA["出口 A · 回 P1<br/>整链重跑，只带原初想法"]
+  R1 == 是 · 第 2 轮 · 议题重叠 ≥ 60% ==> EC(["出口 C · 结构性死锁<br/>停下出报告"])
+  R1 == 是 · 第 2 轮 · 重叠 < 60% ==> FORCE["终止条件兜底<br/>代码强制产出 v5"] --> V5
+  V5 --> R2{"K 占比 ≥ 60%<br/>且第 1 轮？"}
+  R2 == 是 ==> EB["出口 B · 回 P2<br/>v5 当新初稿，只重跑批判链"]
+  R2 -- 否 --> END([结束])
+  EA -. 新一轮 · 窗口全新开 .-> P0
+  EB -. 新一轮 · 窗口全新开 .-> P2A
+
+  class P0,P10,P1A,P14,P2A,AF,BF,P2C anchor
+  class P1B,P2D divA
+  class P2B divB
+  class CR,DF hitl
+  class R1,R2 route
+  class EA exitA
+  class EB exitB
+  class EC exitC
+  class END,V5 done
 ```
+
+图例：灰 = anchor（执笔 / 专家 A / 投资人 / 知情复审）· 蓝 = divergent_a（专家 B / 拆台）· 绿 = divergent_b（单盲）· **橙边 = HITL 停点**（`auto` 档自动通过，`hitl` 档停下等你）· 虚线 = 回边。
+两个档位走的是同一张图：`auto` 在两个橙边节点按执笔者判定直接通过；`hitl` 在那里停下，三选一后接着走。
+P0 忠实性和 2A/2B-fix 的范围扩大化两个检测器在所有档位后台运行，只记录不打断。
+
+| 槽位 | 正式档（CLI 默认） | 演示档（网页） |
+|---|---|---|
+| anchor | claude-sonnet-5 · A1·B1 | gpt-5.6-luna · A2·B1 |
+| divergent_a | deepseek-v4-pro · A3·B3 | deepseek-v4-flash · A3·B3 |
+| divergent_b | glm-5.3 · A3·B2 | glm-4-flash · A3·B2 |
 
 批判步和修改步交替，**每一次批判来自一个新开的、坐标不同的窗口；每一次修改都由同一个执笔窗口完成**——分歧在审查环节，不在修改环节，否则方案会变成多个 AI 的拼贴。
 
