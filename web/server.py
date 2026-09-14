@@ -62,6 +62,10 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path == "/api/plan":
             return self._json(200, plan())
+        if u.path == "/flow.svg":
+            body = (HERE / "flow.svg").read_bytes()
+            self.send_response(200); self.send_header("Content-Type", "image/svg+xml"); self.send_header("Content-Length", str(len(body))); self.end_headers()
+            return self.wfile.write(body)
         if u.path in ("/", "/index.html"):
             body = (HERE / "index.html").read_bytes()
             self.send_response(200)
