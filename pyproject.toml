@@ -3,7 +3,7 @@ name = "liangyi"
 version = "0.2.0"
 description = "两仪 · 一个想法进去，一份经过四轮对抗的方案出来"
 requires-python = ">=3.10"
-dependencies = ["openai>=1.40", "pyyaml>=6.0", "python-dotenv>=1.0"]
+dependencies = ["openai>=1.40", "pyyaml>=6.0", "python-dotenv>=1.0", "rich>=13.0"]
 
 [tool.vercel]
 entrypoint = "api.index:handler"
