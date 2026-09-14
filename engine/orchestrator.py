@@ -36,6 +36,21 @@ class HardRuleViolation(RuntimeError):
     """方法论硬规则未通过 —— 不允许开跑。"""
 
 
+class AwaitingDecision(RuntimeError):
+    """
+    必停点等人 —— 给**非阻塞**的调用方（网页）用的。
+
+    终端里 _ask_human 会 console.input() 一直等；网页不能等，它要把这一步的产出
+    交回浏览器、断开、等人在下一个请求里把决定带回来。所以 decision_provider
+    在没有决定时抛这个异常，随身带着模型这一步的完整产出（raw + Completion），
+    调用方把它存起来；下一个请求通过 precomputed 塞回来，**不再调一次模型**。
+    """
+
+    def __init__(self, position: str, raw: str, completion):
+        super().__init__(f"必停点 {position} 等待人工决定")
+        self.position, self.raw, self.completion = position, raw, completion
+
+
 class BackToP1(RuntimeError):
     """人在 2D-fix 判定前提错了，要回 P1 重做。
 
@@ -221,7 +236,14 @@ class Orchestrator:
         run_root: Path | None = None,
         label: str = "",
         resume_dir: Path | None = None,
+        decision_provider=None,
+        precomputed: dict | None = None,
     ):
+        # 网页用的两个口子。decision_provider(step, raw, gate) -> Decision | None，
+        # 没决定时抛 AwaitingDecision；precomputed {step_id: Completion} 是上一个
+        # 请求已经跑出来的那一步，塞回来就不再调模型。终端路径两者都为空，行为不变。
+        self.decision_provider = decision_provider
+        self.precomputed: dict = dict(precomputed or {})
         violations = check_hard_rules(profile)
         if violations:
             raise HardRuleViolation(
@@ -456,6 +478,9 @@ class Orchestrator:
 
         pos = step.decision_point
 
+        if self.decision_provider is not None:
+            return self.decision_provider(step, content, gate)
+
         # advised 档位：先跑顾问环，把两份旗舰模型的建议摆出来，再问人。
         # 顾问环失败（两份都空、抽取出错）不挡决策点 —— 人照常裸判。
         advice = None
@@ -558,8 +583,13 @@ class Orchestrator:
             )
             return self.read_artifact(step.output)
 
-        raw = self._call_step(step)
-        completion = self._last_completion
+        if step.id in self.precomputed:
+            completion = self.precomputed.pop(step.id)
+            self._last_completion = completion
+            raw = completion.content
+        else:
+            raw = self._call_step(step)
+            completion = self._last_completion
 
         if step.id == "P1.0":
             raw = self._adopt_generated_roles(raw, step)
@@ -571,7 +601,11 @@ class Orchestrator:
                 else self._run_gate(step, raw)
 
             if gate.triggered:
-                decision = self._ask_human(step, raw, gate)
+                try:
+                    decision = self._ask_human(step, raw, gate)
+                except AwaitingDecision as pending:
+                    pending.raw, pending.completion = raw, completion
+                    raise
                 if decision and decision.choice == "back-to-p1":
                     self.trace.record_decision(
                         step_id=step.id, position=step.decision_point, mode="human",

@@ -46,6 +46,22 @@ nav .links a:hover{color:var(--ink)}
 .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:8px;padding:12px 20px;font-family:var(--sans);font-weight:600;font-size:.95rem;cursor:pointer;transition:background .15s}
 .btn-primary{background:var(--ink);color:var(--bg)}
 .btn-primary:hover{background:#2a2a28}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface)}
+.btn:disabled{opacity:.55;cursor:default}
+.tiers{display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap}
+.tier{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:#fff}
+.tier.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.tier input{display:none}.tier b{font-family:var(--sans);font-size:.95rem}.tier small{color:var(--muted);font-size:.85rem}
+.decide{display:none;margin-top:18px;padding:20px 22px;border:1px solid var(--accent);border-radius:12px;background:#fff}
+.decide.on{display:block}
+.d-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}.d-head h3{margin:0;font-size:1.15rem}
+.shift{font-size:.95rem;line-height:1.7;padding:12px 14px;background:var(--surface);border-radius:8px;margin:10px 0}
+.d-ctx{margin:10px 0}.d-ctx summary{cursor:pointer;color:var(--muted);font-size:.9rem}
+.opts{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:#fff}
+.opt.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}.opt input{margin-top:4px}.opt small{color:var(--muted);display:block}
+#d-instr{width:100%;min-height:72px;margin:6px 0 12px;font-family:var(--serif);font-size:.95rem;padding:10px 12px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box}
 .btn-primary:disabled{background:var(--faint);cursor:not-allowed}
 .btn-accent{background:var(--accent);color:#fff}
 .btn-accent:hover{background:var(--accent-dn)}
@@ -75,6 +91,7 @@ textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:t
 .step .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--faint);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--faint);background:var(--white)}
 .step.doing .dot{border-color:var(--accent);color:var(--accent)}
 .step.doing .dot::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}
+.step.await .dot{background:var(--accent);border-color:var(--accent);color:#fff}
 .step.done .dot{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .step.skip .dot{border-style:dashed}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
@@ -133,6 +150,9 @@ table.t th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04
 .card p{font-size:.98rem;margin:0}
 .card.bad{border-color:#F0C9BA;background:#FDF7F4}
 .tag{display:inline-block;font-family:var(--mono);font-size:.72rem;color:var(--accent-dn);background:#FBEFE9;padding:2px 8px;border-radius:999px;margin-bottom:8px}
+.flowsum{margin:0 0 28px;padding:18px 22px;background:var(--surface);border-radius:8px}
+.flowsum p{margin:0 0 10px;font-size:.95rem;line-height:1.7}
+.flowsum p:last-child{margin:0}
 .mech{counter-reset:m}
 .mech .card{position:relative;padding-left:56px}
 .mech .card::before{counter-increment:m;content:counter(m);position:absolute;left:20px;top:20px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--sans);font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center}
@@ -152,7 +172,7 @@ footer a{color:var(--ink-2)}
 
 <header class="hero" id="top"><div class="wrap">
   <h1>一念生两仪，两仪成决策</h1>
-  <p class="lede">AI 产品开发工作流。在关键决策点用两个<b>结构性不同</b>的 AI 产出对抗性输出，由人处理张力并做最终决策——对抗的是 AI 悄悄溶解掉人的独立判断。</p>
+  <p class="lede">一个想法进去，一份经过四轮对抗审查的方案出来。对抗式方案生成 → 投资人批判 → 零上下文单盲复审 → 方向漂移检测与回退 → 前提拆台分级；写与审来自不同厂商、不同对齐路线，具备多出口回退循环，关键节点提供 HITL 人工判断。</p>
   <p class="note">默认：Claude × 4 + DeepSeek × 2 + GLM × 1 · 跨维度是硬规则，具体模型可替换</p>
 </div></header>
 
@@ -164,8 +184,14 @@ footer a{color:var(--ink-2)}
   <div class="entry">
     <textarea id="seed" placeholder="比如：在葡萄牙旅行时，我要从弗洛雷斯岛坐船到科尔武岛。当地没有订票平台，只能用WhatsApp 联系船长，而天气多变，船只取消率极高。"></textarea>
     <div class="examples" id="examples"></div>
+    <div class="tiers" id="tiers">
+      <label class="tier on"><input type="radio" name="tier" value="auto" checked><b>自动</b><small>13 步一口气跑完，不停</small></label>
+      <label class="tier"><input type="radio" name="tier" value="hitl"><b>人工判断</b><small>在「方向漂移回退」「拆台判定」两处停下等你选</small></label>
+    </div>
     <div class="row">
       <button class="btn btn-primary" id="go">运行 13 步</button>
+      <button class="btn btn-ghost" id="stop" hidden>停止</button>
+      <button class="btn btn-ghost" id="dl" hidden>下载运行记录</button>
       <span class="hint" id="hint">演示档（三个不同坐标的便宜模型），约 8–10 分钟、几美分。每人每天 3 次。</span>
     </div>
     <div class="err" id="err"></div>
@@ -178,6 +204,18 @@ footer a{color:var(--ink-2)}
         <div><b id="s-chars">0</b>方案字数</div>
       </div>
       <div class="steps" id="steps"></div>
+      <div class="decide" id="decide">
+        <div class="d-head"><span class="verdict warn">等你决定</span><h3 id="d-title"></h3></div>
+        <p class="muted" id="d-intro"></p>
+        <div id="d-shift" class="shift"></div>
+        <details class="d-ctx"><summary id="d-ctx-sum">看诊断原文</summary><div class="doc" id="d-ctx"></div></details>
+        <div class="opts" id="d-opts"></div>
+        <textarea id="d-instr" placeholder="可选：给执笔者的补充指令（选第 2 / 3 项时会带给它）"></textarea>
+        <div class="row">
+          <button class="btn btn-primary" id="d-go">提交决定，接着跑</button>
+          <button class="btn btn-ghost" id="d-brief">下载材料包（自己去问 GPT / Claude）</button>
+        </div>
+      </div>
     </div>
 
     <div class="result" id="result">
@@ -192,6 +230,12 @@ footer a{color:var(--ink-2)}
 <!-- ============ 流程 ============ -->
 <section id="flow"><div class="wrap">
   <h2>十三步，四种收场</h2>
+  <div class="flowsum">
+    <p><b>P1 对抗式方案生成</b>——两位底模坐标不同的专家各自独立出方案，由执笔者融合成 v1。</p>
+    <p><b>P2 四轮批判链</b>——投资人批判 → 零上下文单盲复审 → 方向漂移检测与回退 → 前提拆台与致命论据分级。写方案的与审方案的来自不同厂商、不同对齐路线，不让同一个模型既写又审。</p>
+    <p><b>多出口循环</b>——拆台判定驱动回退：回 P1 整链重跑、回 P2 重压批判链、结构性死锁退出，两轮封顶。</p>
+    <p><b>HITL 节点</b>——在方向回退与拆台判定两个关键节点提供人工判断选项，auto / hitl 两档可切换。</p>
+  </div>
   <p class="muted">批判步和修改步交替：每一次批判来自一个新开的、坐标不同的窗口；每一次修改都由同一个执笔窗口完成——分歧在审查环节，不在修改环节，否则方案会变成多个 AI 的拼贴。</p>
   <div class="flow" id="flowlist"></div>
   <h3>最后一步判定之后</h3>
@@ -335,6 +379,7 @@ function fillStep(ev) {
   let body = '';
   if (r) body += `<div class="kv"><span>产出 <b>${r.content_chars} 字</b></span><span>输入 <b>${r.tokens_in}</b> tok</span><span>输出 <b>${r.tokens_out}</b> tok</span>${r.reasoning_tokens ? `<span>思考 <b>${r.reasoning_tokens}</b> tok</span>` : ''}<span>读取 <b>${esc((r.inputs || []).join('、') || '原始想法')}</b></span></div>`;
   if (ev.roles) body += `<div class="subh">生成的两个对立角色</div><div class="roles"><div class="role"><b>${esc(ev.roles.role_a)}</b>${esc(ev.roles.stance_a)}</div><div class="role b"><b>${esc(ev.roles.role_b)}</b>${esc(ev.roles.stance_b)}</div></div>${ev.roles.tension ? `<p class="muted" style="font-size:.9rem;margin-top:10px">张力：${esc(ev.roles.tension)}</p>` : ''}`;
+  if (ev.human) body += `<div class="subh">你的决定</div><div class="kv"><span>选了 <b>${esc(ev.human.choice)}</b></span>${ev.human.instruction ? `<span>指令：${esc(ev.human.instruction)}</span>` : ''}</div>`;
   if (ev.decision_log) body += `<div class="subh">执笔窗口的取舍</div><div class="doc">${md(ev.decision_log)}</div>`;
   if (ev.content && !ev.roles) body += `<div class="subh">${esc(ev.output_file)}</div><div class="doc">${md(ev.content)}</div>`;
   document.getElementById('body-' + id).innerHTML = body;
@@ -343,32 +388,91 @@ function fillStep(ev) {
   $('#s-cost').textContent = '$' + cost.toFixed(4);
 }
 
-async function run() {
+/* ---- 运行状态机 ----
+   状态全在浏览器：files 是运行目录的镜像，nextId 是下一步。
+   停止 = 不发下一个请求；继续 = 用现有 files 再进循环；重试 = 失败的请求从不写回 files，重发即可。 */
+let state = 'idle', seedText = '', nextId = null, stopping = false, tier = 'auto', awaiting = null;
+
+function setState(st) {
+  state = st;
+  const go = $('#go'), stop = $('#stop'), dl = $('#dl');
+  const label = { idle: '运行 13 步', running: '运行中…', paused: '继续', error: '重试这一步', done: '再来一条', awaiting: '等你决定' }[st];
+  go.textContent = label; go.disabled = (st === 'running' || st === 'awaiting');
+  document.querySelectorAll('.tier input').forEach(i => i.disabled = (st !== 'idle' && st !== 'done'));
+  stop.disabled = false; stop.textContent = '停止';
+  stop.hidden = (st !== 'running');
+  dl.hidden = !(st === 'paused' || st === 'done' || st === 'error' || st === 'awaiting') || !Object.keys(files).length;
+  if (st !== 'running') clearInterval(timer);
+}
+
+function reset() {
+  files = {}; events = {}; cost = 0; doneN = 0; nextId = null; stopping = false; awaiting = null; $('#decide').classList.remove('on');
+  $('#err').classList.remove('on'); $('#result').classList.remove('on');
+  $('#s-step').textContent = `0 / ${PLAN.length}`; $('#s-time').textContent = '0:00'; $('#s-cost').textContent = '$0.0000'; $('#s-chars').textContent = '0';
+}
+
+async function loop(decision) {
+  setState('running'); $('#err').classList.remove('on');
+  t0 = t0 || Date.now(); clearInterval(timer);
+  timer = setInterval(() => $('#s-time').textContent = fmt((Date.now() - t0) / 1000), 500);
+  while (true) {
+    document.getElementById('st-' + nextId)?.classList.add('doing');
+    let r, res;
+    try {
+      res = await fetch('/api/step' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seed: seedText, files, mode: tier, decision: decision || null }) });
+      decision = null;
+      r = await res.json();
+    } catch (e) { showErr('连接断了：' + e.message + '——可以重试这一步，前面的不会丢。'); return; }
+    if (!res.ok || r.error) { showErr((r && r.error) || `HTTP ${res.status}`); return; }
+    files = r.files;                                   // 只有成功才写回
+    if (r.awaiting) { showDecision(r.awaiting); return; }
+    if (r.event) { events[r.event.step_id] = r.event; fillStep(r.event); }
+    if (r.done) { finish(r); setState('done'); return; }
+    nextId = r.next;
+    if (stopping) { stopping = false; setState('paused'); return; }
+  }
+}
+
+function showDecision(aw) {
+  awaiting = aw; setState('awaiting');
+  const st = document.getElementById('st-' + aw.step_id); st?.classList.remove('doing'); st?.classList.add('await');
+  $('#d-title').textContent = aw.position === '2C-rollback' ? '方向漂移回退' : '拆台判定';
+  $('#d-intro').textContent = aw.position === '2C-rollback'
+    ? '知情复审拿 v1 和 v3 对着看，指出了下面这些偏移。判据是「这还是我想要的吗」，不是「哪个设计更好」——方案更严谨是改进，不是漂移；产品身份、核心承诺、目标用户被换掉了才该退。'
+    : '拆台专家攻的是前提。执笔者已按「框架级 + 具体性高 = 致命」给每条分了级并给出判定；你来定按它走、框架内改、还是前提确实错了回 P1。';
+  $('#d-shift').innerHTML = aw.shift ? `<b>你当初要的 → 现在变成的：</b>${esc(aw.shift)}` : ''; $('#d-shift').style.display = aw.shift ? '' : 'none';
+  $('#d-ctx-sum').textContent = aw.position === '2C-rollback' ? '看漂移诊断原文' : '看分级表与判定';
+  $('#d-ctx').innerHTML = md(aw.context || '');
+  $('#d-opts').innerHTML = aw.options.map((o, k) => `<label class="opt ${k === 0 ? 'on' : ''}"><input type="radio" name="dopt" value="${esc(o.name)}" ${k === 0 ? 'checked' : ''}><span><b>${k + 1}. ${esc(o.desc)}</b><small>${esc(o.name)}</small></span></label>`).join('');
+  document.querySelectorAll('.opt input').forEach(i => i.onchange = () => document.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o.querySelector('input').checked)));
+  $('#d-instr').value = ''; $('#d-brief').hidden = !aw.brief;
+  $('#decide').classList.add('on'); $('#decide').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+$('#d-go').onclick = () => {
+  if (!awaiting) return;
+  const choice = document.querySelector('.opt input:checked')?.value; if (!choice) return;
+  const dec = { position: awaiting.position, choice, instruction: $('#d-instr').value.trim() };
+  document.getElementById('st-' + awaiting.step_id)?.classList.remove('await');
+  $('#decide').classList.remove('on'); awaiting = null; loop(dec);
+};
+$('#d-brief').onclick = () => { if (!awaiting?.brief) return; const b = new Blob([awaiting.brief], { type: 'text/markdown;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `liangyi-brief-${awaiting.position}.md`; a.click(); };
+document.querySelectorAll('.tier input').forEach(i => i.onchange = () => { tier = i.value; document.querySelectorAll('.tier').forEach(t => t.classList.toggle('on', t.querySelector('input').checked)); });
+
+function start() {
   const seed = $('#seed').value.trim();
   if (seed.length < 10) { showErr('想法太短了，至少写一句完整的话。'); return; }
   if (!PLAN.length) { showErr('服务没起来——本地请先运行 python3 web/server.py'); return; }
-  files = {}; events = {}; cost = 0; doneN = 0;
-  $('#err').classList.remove('on'); $('#result').classList.remove('on');
+  reset(); seedText = seed; t0 = Date.now();
   $('#run').classList.add('on'); renderSteps();
-  $('#go').disabled = true; $('#go').textContent = '运行中…';
-  t0 = Date.now(); clearInterval(timer);
-  timer = setInterval(() => $('#s-time').textContent = fmt((Date.now() - t0) / 1000), 500);
-  let nextId = PLAN[0].id;
-  try {
-    while (true) {
-      document.getElementById('st-' + nextId)?.classList.add('doing');
-      const res = await fetch('/api/step' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seed, files }) });
-      const r = await res.json();
-      if (!res.ok || r.error) { showErr(r.error || `HTTP ${res.status}`); break; }
-      files = r.files;
-      if (r.event) { events[r.event.step_id] = r.event; fillStep(r.event); }
-      if (r.done) { finish(r); break; }
-      nextId = r.next;
-    }
-  } catch (e) { showErr('连接断了：' + e.message); }
-  clearInterval(timer); $('#go').disabled = false; $('#go').textContent = '再跑一次';
+  nextId = PLAN[0].id;
+  loop();
 }
-function showErr(m) { $('#err').textContent = m; $('#err').classList.add('on'); clearInterval(timer); $('#go').disabled = false; $('#go').textContent = '运行 13 步'; }
+
+function showErr(m) {
+  document.getElementById('st-' + nextId)?.classList.remove('doing');
+  $('#err').textContent = m; $('#err').classList.add('on');
+  setState(Object.keys(files).length ? 'error' : 'idle');
+}
 
 function finish(r) {
   const v = r.verdict;
@@ -380,7 +484,25 @@ function finish(r) {
   $('#result').classList.add('on');
   $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-$('#go').onclick = run;
+
+function download() {
+  const order = PLAN.map(s => s.output).concat(['P2D-fix-judgment.md']);
+  let meta = {}; try { meta = JSON.parse(files['run.json'] || '{}'); } catch {}
+  const parts = [`# 两仪 · 运行记录\n\n- 想法：${seedText.replace(/\n/g, ' ')}\n- 状态：${meta.status || state}　判定：${meta.verdict || '（未完成）'}　步数：${doneN} / ${PLAN.length}　花费：$${cost.toFixed(4)}\n- 生成时间：${new Date().toISOString()}\n`];
+  order.forEach(name => { const k = 'artifacts/round-1/' + name; if (files[k]) parts.push(`\n---\n\n## ${name}\n\n${files[k]}\n`); });
+  Object.values(events).filter(e => e.human).forEach(e => parts.push(`\n---\n\n## 人工决定 · ${e.step_id}\n\n选项：${e.human.choice}${e.human.instruction ? `\n\n指令：${e.human.instruction}` : ''}\n`));
+  if (files['decision-log.md']) parts.push(`\n---\n\n## decision-log.md\n\n${files['decision-log.md']}\n`);
+  if (files['trace.jsonl']) parts.push(`\n---\n\n## trace.jsonl\n\n\`\`\`\n${files['trace.jsonl']}\n\`\`\`\n`);
+  const blob = new Blob([parts.join('')], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `liangyi-run-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.md`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+$('#go').onclick = () => { if (state === 'idle' || state === 'done') start(); else if (state === 'paused' || state === 'error') loop(); };
+$('#stop').onclick = () => { stopping = true; $('#stop').disabled = true; $('#stop').textContent = '本步跑完即停…'; };
+$('#dl').onclick = download;
+
 </script>
 </body>
 </html>

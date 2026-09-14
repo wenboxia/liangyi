@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from engine.orchestrator import Orchestrator, Scenario  # noqa: E402
+from engine.orchestrator import IDEA_SEPARATOR, Orchestrator, Scenario  # noqa: E402
 from engine.steps import CHAIN  # noqa: E402
 
 PROFILE = "demo"
@@ -79,26 +79,84 @@ def plan() -> list[dict]:
             for s in CHAIN]
 
 
-def run_one_step(files: dict[str, str], seed: str) -> dict:
+PENDING = "artifacts/round-1/_pending.json"   # hitl 必停点等人时，这一步的产出暂存在这
+
+
+def _awaiting_payload(orch, step, raw: str) -> dict:
+    """必停点交回浏览器时附带的上下文：选项、诊断/分级表、材料包。措辞与终端一致。"""
+    from engine import interact, advisor, digest
+    pos = step.decision_point
+    options = [{"key": k, "name": n, "desc": d} for k, n, d in interact.OPTIONS.get(pos, [])]
+    context, shift = "", None
+    if pos == "2C-rollback":
+        context = orch.read_artifact("P2C-review.md") if orch.has_artifact("P2C-review.md") else ""
+        try:                                        # 「你当初要 X，现在变成 Y」—— 一次便宜的摘要调用
+            v1, v3 = orch.read_artifact("idea-v1.md"), orch.read_artifact("idea-v3.md")
+            d = digest.version_diff(v1, v3)
+            shift = d.change if d.ok else None
+        except Exception:
+            shift = None
+    elif pos == "2D-fix":
+        context = raw.split(IDEA_SEPARATOR)[0] if IDEA_SEPARATOR in raw else raw
+    try:
+        brief = advisor.build_brief(orch, pos, interact.OPTIONS.get(pos, []))
+    except Exception:
+        brief = ""
+    return {"position": pos, "step_id": step.id, "title": STEP_INFO[step.id][0],
+            "options": options, "context": context, "shift": shift, "brief": brief}
+
+
+def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
+                 decision: dict | None = None) -> dict:
     """
     走一步。files 为空表示新开一条链。
 
-    返回 {files, event, done, verdict, next}：
-      files   —— 走完这一步之后运行目录里的全部文件，原样传回来即可续走
-      event   —— 这一步的 trace 记录 + 产物内容 + 这一步写的决策日志片段
-      done    —— 13 步走完了没有
-      verdict —— 走完之后 2D-fix 的判定（produced-v5 / back-to-p1）
+    mode      —— auto / hitl，**开链时定死**，之后从 run.json 里读，请求里再传也不改
+    decision  —— hitl 在必停点等人时，浏览器把决定带回来：{position, choice, instruction}
+
+    返回 {files, event, done, verdict, next, awaiting}：
+      files    —— 走完这一步之后运行目录里的全部文件，原样传回来即可续走
+      event    —— 这一步的 trace 记录 + 产物内容 + 这一步写的决策日志片段
+      awaiting —— hitl 到必停点了：这一步的产出已暂存，等人选；带选项、上下文、材料包
+      done     —— 13 步走完了没有
+      verdict  —— 走完之后的判定（produced-v5 / back-to-p1）
     """
+    from engine.orchestrator import AwaitingDecision, BackToP1
+    from engine.providers import Completion
+    from engine.interact import Decision
+
     tmp = Path(tempfile.mkdtemp(prefix="liangyi-web-"))
     try:
         _write_files(tmp, files)
         sc_path = tmp / "scenario.yaml"
         if sc_path.exists():
             scenario = Scenario.load(sc_path)
+            try:
+                mode = json.loads((tmp / "run.json").read_text(encoding="utf-8")).get("mode") or mode
+            except Exception:
+                pass
         else:
             scenario = Scenario(id="web", name="访客的想法", seed=seed.strip())
+        mode = "hitl" if mode == "hitl" else "auto"
 
-        orch = Orchestrator(scenario, profile=PROFILE, mode="auto", resume_dir=tmp)
+        # 上一个请求在必停点暂存的产出：带回来就不再调模型
+        precomputed = {}
+        pend = tmp / PENDING
+        if pend.exists():
+            j = json.loads(pend.read_text(encoding="utf-8"))
+            precomputed[j["step_id"]] = Completion(**j["completion"])
+            pend.unlink()
+
+        def provider(step, raw, gate):
+            pos = step.decision_point
+            if decision and decision.get("position") == pos and decision.get("choice"):
+                instr = (decision.get("instruction") or "").strip()
+                return Decision(decision["choice"], instruction=instr, rationale=instr)
+            raise AwaitingDecision(pos, "", None)      # execute() 会把 raw / completion 填进来
+
+        orch = Orchestrator(scenario, profile=PROFILE, mode=mode, resume_dir=tmp,
+                            decision_provider=provider if mode == "hitl" else None,
+                            precomputed=precomputed)
         orch.restore()
         todo = orch.pending()
         if not todo:
@@ -113,7 +171,35 @@ def run_one_step(files: dict[str, str], seed: str) -> dict:
         log_before = (tmp / "decision-log.md").read_text(encoding="utf-8") \
             if (tmp / "decision-log.md").exists() else ""
         before = len(orch.trace.steps)
-        orch.execute(step)
+
+        try:
+            orch.execute(step)
+        except AwaitingDecision as pending:
+            # 产出暂存，交回浏览器等人选。Completion 整包序列化，下一个请求原样塞回。
+            pend.parent.mkdir(parents=True, exist_ok=True)
+            pend.write_text(json.dumps({
+                "step_id": step.id, "raw": pending.raw,
+                "completion": dataclasses.asdict(pending.completion),
+            }, ensure_ascii=False), encoding="utf-8")
+            return {"files": _read_files(tmp), "event": None, "done": False,
+                    "verdict": None, "next": step.id,
+                    "awaiting": _awaiting_payload(orch, step, pending.raw)}
+        except BackToP1 as back:
+            # 人判定前提错了。和 auto 档模型自判一样收场：留一份判定书，不产出 v5。
+            rec = orch.trace.steps[-1] if len(orch.trace.steps) > before else None
+            head = ""
+            if step.id in files_pending_raw(files):
+                head = files_pending_raw(files)[step.id]
+            judgment = (head.split(IDEA_SEPARATOR)[0] if IDEA_SEPARATOR in head else head).strip()
+            judgment += f"\n\n## 人工判定\n\n回 P1 重做。{back}\n"
+            orch.write_artifact("P2D-fix-judgment.md", judgment)
+            orch.finish()
+            meta = json.loads((tmp / "run.json").read_text(encoding="utf-8"))
+            return {"files": _read_files(tmp), "done": True, "verdict": "back-to-p1", "next": None,
+                    "event": {"step_id": step.id, "title": STEP_INFO[step.id][0],
+                              "output_file": "P2D-fix-judgment.md", "content": judgment,
+                              "decision_log": "", "record": _record_dict(rec) if rec else None,
+                              "roles": None, "skipped": False, "human": decision}}
 
         rec = _record_dict(orch.trace.steps[-1]) if len(orch.trace.steps) > before else None
         out_name = next((n for n in (step.output, "P2D-fix-judgment.md")
@@ -142,9 +228,19 @@ def run_one_step(files: dict[str, str], seed: str) -> dict:
             "event": {"step_id": step.id, "title": STEP_INFO[step.id][0],
                       "output_file": out_name, "content": content,
                       "decision_log": log_delta, "record": rec, "roles": roles,
-                      "skipped": rec is None},
+                      "skipped": rec is None,
+                      "human": decision if (decision and decision.get("position") == step.decision_point) else None},
             "done": done, "verdict": verdict,
             "next": remaining[0].id if remaining else None,
         }
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def files_pending_raw(files: dict[str, str]) -> dict[str, str]:
+    """从请求带来的 files 里取出暂存的 raw（BackToP1 收场时要用它写判定书）。"""
+    try:
+        j = json.loads(files.get(PENDING, "") or "{}")
+        return {j["step_id"]: j["raw"]} if j else {}
+    except Exception:
+        return {}

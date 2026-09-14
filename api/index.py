@@ -59,7 +59,7 @@ class handler(BaseHTTPRequestHandler):
                 if not ok:
                     return send_json(self, 429, {"error": f"今天的 {DAILY_LIMIT} 次已用完，明天再来。"})
         try:
-            out = run_one_step(files, seed)
+            out = run_one_step(files, seed, mode=req.get('mode') or 'auto', decision=req.get('decision'))
         except Exception as exc:                        # 让前端看到是哪一步炸了
             return send_json(self, 500, {"error": f"{type(exc).__name__}: {exc}"})
         return send_json(self, 200, out, {"X-Liangyi-Limit": limit_kind} if limit_kind else None)

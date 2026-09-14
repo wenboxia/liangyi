@@ -3,6 +3,10 @@
 `web/` 是一个无状态的分步 API + 一个静态页。每个请求只走链条的一步（演示档最长约 80 秒），
 运行目录整个在请求体里来回传，服务端不存任何东西。引擎一行不改，`restore()` 从产物重建窗口历史。
 
+`POST /api/step` 请求体：`{seed, files, mode, decision}`。`mode` 取 `auto` / `hitl`，**开链时定死**，之后从 `run.json` 读；
+`hitl` 到必停点时响应带 `awaiting`（选项、上下文、材料包），这一步的产出暂存在 `files` 里的 `_pending.json`，
+下一个请求带 `decision: {position, choice, instruction}` 回来接着走——选 `accept` 不再调模型。
+
 ## 本地
 
 ```bash
