@@ -153,8 +153,12 @@ table.t th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04
 .flowsum{margin:0 0 28px;padding:18px 22px;background:var(--surface);border-radius:8px}
 .flowsum p{margin:0 0 10px;font-size:.95rem;line-height:1.7}
 .flowsum p:last-child{margin:0}
+.diagrams{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0 14px}
+.dcol{padding:14px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow-x:auto}
+.dcol h4{margin:0 0 8px;font-family:var(--sans);font-size:.95rem}
+.dcol .mermaid{margin:0}
+@media(max-width:900px){.diagrams{grid-template-columns:1fr}}
 .diagram{overflow-x:auto;margin:6px 0 10px;padding:14px;background:#fff;border:1px solid var(--border);border-radius:12px}
-.diagram img{display:block;max-width:none;width:1600px;height:auto}
 .diagram-hint{font-size:.8rem;color:var(--muted);margin:-4px 0 12px}
 .legend .lg{display:inline-block;padding:1px 8px;border-radius:4px;border:1px solid;font-family:var(--sans);font-size:.8rem;margin-right:2px}
 .lg-a{background:#F0EEE6;border-color:#B0AEA5}.lg-b{background:#E8EEF3;border-color:#8FA3B3}.lg-c{background:#EAF1EA;border-color:#8FB08F}.lg-h{background:#FBEFE9;border-color:#D97757}
@@ -164,6 +168,7 @@ table.t th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04
 footer{padding:36px 0 56px;border-top:1px solid var(--line);font-family:var(--sans);font-size:.88rem;color:var(--muted)}
 footer a{color:var(--ink-2)}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 </head>
 <body>
 
@@ -241,8 +246,98 @@ footer a{color:var(--ink-2)}
     <p><b>多出口循环</b>——拆台判定驱动回退：回 P1 整链重跑、回 P2 重压批判链、结构性死锁退出，两轮封顶。</p>
     <p><b>HITL 节点</b>——在方向回退与拆台判定两个关键节点提供人工判断选项，auto / hitl 两档可切换。</p>
   </div>
-  <div class="diagram"><img src="/flow.svg" alt="两仪 13 步状态机" width="1600" height="810"></div>
-  <p class="diagram-hint">← 横向滚动看整张图 →</p>
+  <div class="diagrams"><div class="dcol"><h4>auto 档 · 全自动一次不停</h4><pre class="mermaid">
+flowchart TB
+  classDef anchor fill:#F0EEE6,stroke:#B0AEA5,color:#141413
+  classDef divA fill:#E4ECF2,stroke:#8FA3B3,color:#141413
+  classDef divB fill:#E8F0E6,stroke:#8FB08F,color:#141413
+  classDef hitl fill:#FBEFE9,stroke:#D97757,stroke-width:2px,color:#141413
+  classDef route fill:#FFF4D6,stroke:#C9A227,color:#141413
+  classDef exitA fill:#F8DADA,stroke:#B04141,color:#141413
+  classDef exitB fill:#DCEEF3,stroke:#3E7A8C,color:#141413
+  classDef exitC fill:#E9E8E4,stroke:#666,color:#141413
+  classDef done fill:#141413,stroke:#141413,color:#FAF9F5
+  SEED([原初想法]) --> P0[P0 忠实精炼<br/>anchor]
+  P0 --> P10[P1.0 生成对抗角色<br/>anchor · 假对立检测]
+  P10 -. 假对立 → 重生成 ≤1 次 .-> P10
+  P10 --> P1A[P1A 专家 A<br/>anchor]
+  P10 --> P1B[P1B 专家 B<br/>divergent_a · 与 A 互不可见]
+  P1A --> P14[P1.4 融合 → v1<br/>anchor 执笔]
+  P1B --> P14
+  P14 --> P2A[P2A 投资人批判<br/>anchor · 新窗口] --> AF[2A-fix → v2<br/>执笔]
+  AF --> P2B[P2B 零上下文单盲<br/>divergent_b · 只见正文] --> BF[2B-fix → v3<br/>执笔]
+  BF --> P2C[P2C 知情复审<br/>anchor · 对照 v1/v3 查漂移]
+  P2C --> CR[2C-rollback → v4<br/>执笔按诊断自判回退]
+  CR --> P2D[P2D 拆台<br/>divergent_a · 只攻前提] --> DF[2D-fix → v5<br/>执笔分级判定]
+  DF --> R1
+  R1{致命论据 ≥ 2？<br/>K 级 × 具体性高}
+  R1 -- 否 --> V5[产出 v5]
+  R1 -- 是 · 第 1 轮 --> EA[出口 A · 回 P1<br/>整链重跑]
+  R1 -- 是 · 第 2 轮 · 议题重叠 ≥ 60% --> EC([出口 C · 结构性死锁])
+  R1 -- 是 · 第 2 轮 · 重叠 < 60% --> FORCE[终止条件兜底<br/>强制产出 v5] --> V5
+  V5 --> R2{K 占比 ≥ 60%<br/>且第 1 轮？}
+  R2 -- 是 --> EB[出口 B · 回 P2<br/>v5 当新初稿]
+  R2 -- 否 --> END([结束])
+  EA -. 新一轮 · 窗口全新开 .-> P0
+  EB -. 新一轮 · 只重跑批判链 .-> P2A
+  class P0,P10,P1A,P14,P2A,AF,BF,P2C,CR,DF anchor
+  class P1B,P2D divA
+  class P2B divB
+  class R1,R2 route
+  class EA exitA
+  class EB exitB
+  class EC exitC
+  class END,V5 done
+</pre></div><div class="dcol"><h4>hitl 档 · 两个停点等你选</h4><pre class="mermaid">
+flowchart TB
+  classDef anchor fill:#F0EEE6,stroke:#B0AEA5,color:#141413
+  classDef divA fill:#E4ECF2,stroke:#8FA3B3,color:#141413
+  classDef divB fill:#E8F0E6,stroke:#8FB08F,color:#141413
+  classDef hitl fill:#FBEFE9,stroke:#D97757,stroke-width:2px,color:#141413
+  classDef route fill:#FFF4D6,stroke:#C9A227,color:#141413
+  classDef exitA fill:#F8DADA,stroke:#B04141,color:#141413
+  classDef exitB fill:#DCEEF3,stroke:#3E7A8C,color:#141413
+  classDef exitC fill:#E9E8E4,stroke:#666,color:#141413
+  classDef done fill:#141413,stroke:#141413,color:#FAF9F5
+  SEED([原初想法]) --> P0[P0 忠实精炼<br/>anchor]
+  P0 --> P10[P1.0 生成对抗角色<br/>anchor · 假对立检测]
+  P10 -. 假对立 → 重生成 ≤1 次 .-> P10
+  P10 --> P1A[P1A 专家 A<br/>anchor]
+  P10 --> P1B[P1B 专家 B<br/>divergent_a · 与 A 互不可见]
+  P1A --> P14[P1.4 融合 → v1<br/>anchor 执笔]
+  P1B --> P14
+  P14 --> P2A[P2A 投资人批判<br/>anchor · 新窗口] --> AF[2A-fix → v2<br/>执笔]
+  AF --> P2B[P2B 零上下文单盲<br/>divergent_b · 只见正文] --> BF[2B-fix → v3<br/>执笔]
+  BF --> P2C[P2C 知情复审<br/>anchor · 对照 v1/v3 查漂移]
+  P2C --> CR[2C-rollback → v4<br/>执笔]
+  CR --> H1{{★ HITL ① 停下等你<br/>诊断 + 「当初要 X → 现在变成 Y」}}
+  H1 -- 接受 --> P2D
+  H1 -- 指定回退 / 指定保留<br/>带指令重跑 --> CR
+  P2D[P2D 拆台<br/>divergent_a · 只攻前提] --> DF[2D-fix → v5<br/>执笔分级判定]
+  DF --> H2{{★ HITL ② 停下等你<br/>分级表 + 判定}}
+  H2 -- 按判定走 --> R1
+  H2 -- 框架内改<br/>带指令重跑 --> DF
+  H2 -- ★ 前提错了 --> EA
+  R1{致命论据 ≥ 2？<br/>K 级 × 具体性高}
+  R1 -- 否 --> V5[产出 v5]
+  R1 -- 是 · 第 1 轮 --> EA[出口 A · 回 P1<br/>整链重跑]
+  R1 -- 是 · 第 2 轮 · 议题重叠 ≥ 60% --> EC([出口 C · 结构性死锁])
+  R1 -- 是 · 第 2 轮 · 重叠 < 60% --> FORCE[终止条件兜底<br/>强制产出 v5] --> V5
+  V5 --> R2{K 占比 ≥ 60%<br/>且第 1 轮？}
+  R2 -- 是 --> EB[出口 B · 回 P2<br/>v5 当新初稿]
+  R2 -- 否 --> END([结束])
+  EA -. 新一轮 · 窗口全新开 .-> P0
+  EB -. 新一轮 · 只重跑批判链 .-> P2A
+  class P0,P10,P1A,P14,P2A,AF,BF,P2C,CR,DF anchor
+  class P1B,P2D divA
+  class P2B divB
+  class R1,R2 route
+  class EA exitA
+  class EB exitB
+  class EC exitC
+  class END,V5 done
+  class H1,H2 hitl
+</pre></div></div>
   <p class="muted legend">图例：<span class="lg lg-a">anchor</span> 执笔 / 专家 A / 投资人 / 知情复审　<span class="lg lg-b">divergent_a</span> 专家 B / 拆台　<span class="lg lg-c">divergent_b</span> 单盲　<span class="lg lg-h">HITL 停点</span> auto 自动通过，hitl 停下等你　虚线 = 回边。两个档位走同一张图。演示档：anchor = gpt-5.6-luna（A2·B1）、divergent_a = deepseek-v4-flash（A3·B3）、divergent_b = glm-4-flash（A3·B2）。</p>
   <p class="muted">批判步和修改步交替：每一次批判来自一个新开的、坐标不同的窗口；每一次修改都由同一个执笔窗口完成——分歧在审查环节，不在修改环节，否则方案会变成多个 AI 的拼贴。</p>
   <div class="flow" id="flowlist"></div>
@@ -306,6 +401,7 @@ footer a{color:var(--ink-2)}
 </div></footer>
 
 <script>
+if (window.mermaid) mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose', flowchart: { curve: 'basis', nodeSpacing: 22, rankSpacing: 34 } });
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const GITHUB = 'https://github.com/wenboxia/liangyi';
