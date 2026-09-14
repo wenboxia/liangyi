@@ -2,9 +2,16 @@
 
 **Try it live →** https://liangyi-five.vercel.app — type an idea, watch it go through all 13 steps (demo tier, 3 runs per person per day).
 
-**One idea, two polarities, one decision.** An AI product-development workflow: at each key decision point, two *structurally different* AI models produce adversarial output; a human resolves the tension and makes the final call.
+**One idea, two polarities, one decision.**
 
-What it resists is specific — **AI quietly dissolving human independent judgment.** Not by breaking the process, but by letting it finish smoothly with something you never actually wanted.
+One idea in, one proposal out — after four rounds of adversarial review.
+
+- **P1 adversarial drafting**: two experts on different base-model coordinates draft independently; a scribe merges them into v1.
+- **P2 four-round critique chain**: investor critique → zero-context blind review → drift detection with rollback → premise teardown with kill-shot grading. Writers and reviewers come from different vendors and alignment lineages — no model both writes and reviews its own work.
+- **Multi-exit loop**: the teardown verdict drives rollback — back to P1 (full rerun), back to P2 (re-run the critique chain), or structural-deadlock exit; capped at two rounds.
+- **HITL nodes**: human decision points at drift-rollback and teardown-verdict; switch between `auto` and `hitl` tiers.
+
+Why: **a single model that writes and reviews its own work cannot see its own blind spots.**
 
 **Try it online →** (link after deployment)　Paste an idea, watch it go through all 13 steps.
 

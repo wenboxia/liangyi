@@ -560,6 +560,89 @@ def test_loop_turns_on_real_judgments() -> None:
           "上一轮的 v5 逐字成为第二轮的 v1")
 
 
+def test_web_decision_hooks() -> None:
+    """
+    网页 hitl 用的两个口子：decision_provider 和 precomputed。
+
+    终端 hitl 是 console.input() 阻塞等人；网页不能等，必停点要把产出交回浏览器，
+    下一个请求再把决定带回来。这里锁四件事：
+      · provider 在必停点被调用，auto 档永远不被调用
+      · provider 抛 AwaitingDecision 时，异常随身带着这一步的 raw 和 Completion
+      · 带着 precomputed 回来、选「接受」→ **零次模型调用**（不多花一次钱）
+      · 选「框架内修改」→ 恰好多调一次，且带着人的指令
+    """
+    import tempfile
+    from pathlib import Path as _P
+    from .orchestrator import Orchestrator, Scenario, AwaitingDecision, BackToP1, IDEA_SEPARATOR
+    from .providers import Completion
+    from .interact import Decision
+    from .steps import step_by_id
+
+    print("\n网页决策口子（provider / precomputed）")
+
+    def fake(text):
+        return Completion(content=text, reasoning=None, model_id="fake", tokens_in=1,
+                          tokens_out=1, reasoning_tokens=0, cost_usd=0.0, duration_ms=1)
+
+    def make(mode, provider=None, precomputed=None):
+        sc = Scenario.load(_P("scenarios/dev-diagnose.yaml"))
+        o = Orchestrator(sc, run_root=_P(tempfile.mkdtemp()), mode=mode,
+                         decision_provider=provider, precomputed=precomputed)
+        # 2C-rollback 读 idea-v3 和 P2C-review
+        o.write_artifact("idea-v3.md", "v3"); o.write_artifact("P2C-review.md", "漂移诊断")
+        calls = []
+        def _call(step, extra=""):
+            calls.append(extra)
+            c = fake(f"决策日志\n{IDEA_SEPARATOR}\nv4 正文（{extra or '无指令'}）")
+            o._last_completion = c
+            return c.content
+        o._call_step = _call
+        return o, calls
+
+    step = step_by_id("2C-rollback")
+
+    # auto 档：provider 永远不被调用
+    hit = []
+    o, calls = make("auto", provider=lambda *a: hit.append(1))
+    o.execute(step)
+    check(not hit, "auto 档下 provider 一次都不被调用")
+
+    # hitl 档：没有决定 → 抛 AwaitingDecision，带着 raw 和 Completion
+    def no_decision(step, raw, gate):
+        raise AwaitingDecision(step.decision_point, "", None)
+    o, calls = make("hitl", provider=no_decision)
+    try:
+        o.execute(step); check(False, "必停点没有决定时应抛 AwaitingDecision")
+    except AwaitingDecision as e:
+        check(e.position == "2C-rollback" and IDEA_SEPARATOR in e.raw and e.completion is not None,
+              "AwaitingDecision 带着这一步的 raw 和 Completion")
+        pending = e.completion
+    check(len(calls) == 1, "第一个请求恰好调了一次模型")
+
+    # 带 precomputed 回来 + 接受 → 零次模型调用，产物落地
+    o, calls = make("hitl", provider=lambda *a: Decision("accept"),
+                    precomputed={"2C-rollback": pending})
+    o.execute(step)
+    check(len(calls) == 0, "带着 precomputed 回来选「接受」：零次模型调用 —— 不多花一次钱")
+    check(o.has_artifact("idea-v4.md"), "接受后产物 idea-v4.md 落地")
+
+    # 带 precomputed 回来 + 框架内修改 → 恰好多调一次，带指令
+    o, calls = make("hitl", provider=lambda *a: Decision("rollback-more", instruction="把定价那节退回去"),
+                    precomputed={"2C-rollback": pending})
+    o.execute(step)
+    check(calls == ["把定价那节退回去"], "选「我指定回退」：恰好多调一次，且带着人的指令", f"实际 {calls}")
+
+    # 2D-fix 回 P1 → 抛 BackToP1
+    step2 = step_by_id("2D-fix")
+    o, calls = make("hitl", provider=lambda *a: Decision("back-to-p1", rationale="前提错了"),
+                    precomputed={"2D-fix": fake(f"【判定】产出v5\n{IDEA_SEPARATOR}\nv5")})
+    o.write_artifact("idea-v4.md", "v4"); o.write_artifact("P2D-devils-advocate.md", "拆台")
+    try:
+        o.execute(step2); check(False, "回 P1 应抛 BackToP1")
+    except BackToP1:
+        check(o.verdict == "back-to-p1", "网页决定回 P1 → verdict 记为 back-to-p1")
+
+
 def main() -> int:
     print("两仪论工作流 · 结构保证验证")
     print("=" * 52)
@@ -573,6 +656,7 @@ def main() -> int:
     test_loop_routing()
     test_grading_row_count()
     test_loop_turns_on_real_judgments()
+    test_web_decision_hooks()
 
     passed, total = sum(_results), len(_results)
     print("\n" + "=" * 52)

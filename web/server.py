@@ -91,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
             if not _is_owner(self, parse_qs(u.query)) and not _allow_new_chain(ip):
                 return self._json(429, {"error": f"今天的 {DAILY_LIMIT} 次已用完，明天再来。"})
         try:
-            return self._json(200, run_one_step(files, seed))
+            return self._json(200, run_one_step(files, seed, mode=req.get('mode') or 'auto', decision=req.get('decision')))
         except Exception as exc:                         # 让前端看到是哪一步炸了
             return self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
 
