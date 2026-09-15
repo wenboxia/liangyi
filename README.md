@@ -210,7 +210,7 @@ P0 忠实性和 2A/2B-fix 的范围扩大化两个检测器在所有档位后台
 ```
 engine/          13 步链条的可运行实现：编排、窗口隔离、路由、检测器、trace
   prompts/       每一步的提示词，在线入口共用这同一批文件
-  test_guarantees.py   76 条结构保证测试
+  test_guarantees.py   83 条结构保证测试
 web/             在线入口：一步一个无状态请求，运行目录整个来回传
 scenarios/       场景文件（seed + 可选预写角色）
 docs/            方法论本体、评测方法、实测案例
@@ -226,12 +226,12 @@ experiments/     2026-04 到 05 的六次手工实验档案
 | 拿一个真实项目倒回去重跑的对照 | [`docs/case-voyageguard.md`](docs/case-voyageguard.md) |
 | 凭什么信上面那个案例的数字 | [`docs/evaluation.md`](docs/evaluation.md) |
 | 引擎每一步谁在跑、两个档位差在哪 | [`engine/PIPELINE.md`](engine/PIPELINE.md) |
-| 十六条方法论合规检验，含失败项 | [`engine/VALIDATION.md`](engine/VALIDATION.md) |
+| 二十条方法论合规检验，含失败项 | [`engine/VALIDATION.md`](engine/VALIDATION.md) |
 | 全自动变种为什么是实验工具不是产品形态 | [`docs/liangyi-auto-variant.md`](docs/liangyi-auto-variant.md) |
 
 ## 验到了什么、没验到什么
 
-**验到了**：链条在 13 条真实运行上跑通（含一次完整回溯对照）；76 条结构保证测试锁住机制而不是措辞；循环的四条出口用真实判定书离线驱动过。
+**验到了**：链条在 13 条真实运行上跑通（含一次完整回溯对照）；83 条结构保证测试锁住机制而不是措辞；循环的四条出口用真实判定书离线驱动过。
 
 **没验到**：四条出口没有一次真实运行走完第二轮；判定与复判同属一家模型，跨厂商复核没做；回溯案例只有一个项目、跑一次。
 
