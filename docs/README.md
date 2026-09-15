@@ -36,8 +36,9 @@
 
 - `build_voyageguard_page.py` → `voyageguard-data.json`：从 `runs/` 的原始记录抽出案例数据
 - `build_case_doc.py`：从上面的数据生成 [`case-voyageguard.md`](case-voyageguard.md)，数字不手抄
+- `build_flow_mmd.py` → `flow-auto.mmd` / `flow-hitl.mmd`：两张纵向状态机图（auto / hitl 各一张），同时写进顶层 README（上下叠）和 `../web/index.html`（左右并排）。改图改脚本，不手改产物
 
-旧的可视化页面（`liangyi_field_alive_v5.html`、`liangyi.html`、`voyageguard-retro.html`）已于 2026-09-13 退役至 `../archive/retired-2026-09/visualizations/`，只作历史快照——里面的模型名和坐标标注是 2026-04 的旧分类。对外页面是 `../web/index.html`。
+旧的可视化页面（`liangyi_field_alive_v5.html`、`liangyi.html`、`voyageguard-retro.html`）和横向 SVG 版状态图脚本 `build_flow_svg.py` 已于 2026-09 退役至 `../archive/retired-2026-09/`，只作历史快照——里面的模型名和坐标标注是 2026-04 的旧分类。对外页面是 `../web/index.html`，线上 https://liangyi-five.vercel.app 。
 
 ### 4. `liangyi-auto-variant.md` · 全自动变种
 
@@ -55,7 +56,7 @@
   拆台判定不稳定这条发现。
 - `evaluation-layer-pivot.md`：为什么放弃「证明人工决策点必要」这个原目标（2026-09-08 决策记录）。
 
-工程层的实现细节在 `../engine/PIPELINE.md`，十六条合规检验在 `../engine/VALIDATION.md`。
+工程层的实现细节在 `../engine/PIPELINE.md`，二十条合规检验在 `../engine/VALIDATION.md`。
 
 ### 6. `longterm-and-reference.md` · 长期观察与理论借鉴
 
@@ -65,7 +66,7 @@
 
 ## 文档状态
 
-**当前阶段**：方法论本体稳定，可以用它做产品。
+**当前阶段**：方法论本体稳定；工程实现已完成并上线（`../engine/` + `../web/`，线上 https://liangyi-five.vercel.app ），评测层于 2026-09-08 转向后到此为止。
 
 **持续演化**：方法论永远不会"完成"。未来可能有新洞察加入——这是常态，不是缺陷。
 
@@ -81,5 +82,9 @@
 - 2026-04-18：方法论深度思考日（认知场论、session hygiene、divergence 原理）
 - 2026-04-19：迁移到当前 Cowork Project，开始落地阶段
 - 2026-08-27：维度 A 判据整体更换——从"对齐算法路径"改为"冲突偏向"（A1 规范优先 / A2 权限优先 / A3 任务优先 + 未公开档）。起因是九家厂商复核发现头部厂商已停止公布 RL 算法，原判据不再可观测。**换的是判据、不是机制**；同时新增硬规则"维度 A 未公开的模型不进入方法论"。经过见 `../references/ai-training-landscape.md` 第五节
+- 2026-08-30：项目重定位为思想层 + 工程层 + 评测层；开始把方法论做成可运行的 13 步链条
+- 2026-09-08：评测层转向——放弃「用胜率证明人工节点有价值」，改为一次 VoyageGuard 回溯对照；四档 HITL 并为 `auto` / `hitl` 两档。记录见 `evaluation-layer-pivot.md`
+- 2026-09-13：收束为可交付形态，推 GitHub、上线 Vercel
+- 2026-09-15：网页两档 + 运行控制 + 两张状态机图定稿，交付形态定稿
 
 未来的重要节点记录在这里。

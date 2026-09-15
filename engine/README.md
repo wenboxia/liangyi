@@ -87,7 +87,7 @@ P2D       critic-devil     拆台（AI identity 轴）       → P2D-devils-advo
 
 ## 断点续跑
 
-一条链要调 12 次 API，中途断掉是常态（余额、限流、provider 拒绝）。从头重跑
+一条链要调 13 次 API，中途断掉是常态（余额、限流、provider 拒绝）。从头重跑
 既费钱又费时间，所以：
 
 ```bash
@@ -106,7 +106,7 @@ python -m engine.run --resume runs/20260829-230613-dev-diagnose
 
 ## 人工决策点
 
-三档：
+两档（哪一步谁跑、两档逐步差在哪，见 `PIPELINE.md`，由配置导出）：
 
 ```bash
 --mode auto      # 全自动，一次都不停。跑批、可复现
@@ -120,11 +120,13 @@ python -m engine.run --resume runs/20260829-230613-dev-diagnose
 - `2C-rollback` —— 方向漂移了要不要回退。投资 skill 那次不停就会交付成合规文档
 - `2D-fix` —— 框架内修改还是回 P1。四个变种场景全部卡在这里
 
-**条件触发点**平时不打扰，检测到问题才叫人。检测器在 `gate.py`，用便宜模型，
-单次约 $0.0002：
+**条件触发检测器**在所有档位后台跑、**只记录不打断**（影子模式，2026-09-08 起）。
+检测器在 `gate.py`，用便宜模型，单次约 $0.0002，结果进 `trace.jsonl`：
 
-- `P0-review` —— 精炼版偏离原意时
-- `scope-creep` —— 执笔者把批判的攻击范围扩大化时
+- `P0-review` —— 精炼版是否偏离原意
+- `scope-creep` —— 执笔者是否把批判的攻击范围扩大化
+
+它们判的是「AI 改得对不对」，规则就够；做成会打断人的档位反而和 HITL 的论点相反。
 
 ### 界面设计的一条原则：判断层次必须和人的能力对得上
 
@@ -194,9 +196,18 @@ runs/20260829-230421-dev-diagnose/
 它变成可以直接检验的东西——尤其可以拿 A1 和 A3 在同一个拆台任务上的思考过程对照，
 看「有规范层的底模会在最关键那一刀上把攻击软化掉」这个论断到底成不成立。
 
-## 状态
+## 状态（2026-09-15）
 
-Phase C（条件触发式 HITL）。链条 13 步跑通，两个必停点与两个条件触发点全部实装
-并验证过，`python -m engine.test_guarantees` 21 项结构保证通过。
+交付完成。链条 13 步跑通，auto / hitl 两档，`python3 -m engine.test_guarantees`
+83 条结构保证通过，`VALIDATION.md` 20 条方法论合规检验（失败的照原样留着）。
+13 条 CLI 运行（10 条正式档完整链）+ 一次 VoyageGuard 回溯对照（`../docs/case-voyageguard.md`）。
 
-剩余：2 场景 ×（全自动 vs 人介入）的对照跑批，作为 HITL 价值的展示素材。
+在线入口 https://liangyi-five.vercel.app 跑的是同一套引擎（`demo` 档），一步一个
+无状态请求，`restore()` 从产物重建窗口历史；网页 hitl 档靠 `Orchestrator` 的
+`decision_provider` / `precomputed` / `AwaitingDecision` 三个钩子，终端路径不变。
+
+评测层已于 2026-09-08 转向后停止：不再做 HITL 对照跑批、裁判评分、消融实验
+（`../docs/evaluation-layer-pivot.md`）。`judge.py` 与 `config.py` 的 `JUDGES` 只留档。
+
+没验到的：循环三出口只离线用真实判定书驱动过，真实运行没走完第二轮；拆台判定
+同输入多次跑分级不同（检验十八）；续跑账目少记（检验二十）。

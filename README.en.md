@@ -85,11 +85,11 @@ Two things are judged separately: **can the coordinate be determined** (hard rul
 | A real project re-run from its original idea | [`docs/case-voyageguard.md`](docs/case-voyageguard.md) |
 | Why those numbers can be trusted | [`docs/evaluation.md`](docs/evaluation.md) |
 | Who runs each step, the two modes | [`engine/PIPELINE.md`](engine/PIPELINE.md) |
-| Sixteen compliance checks, failures included | [`engine/VALIDATION.md`](engine/VALIDATION.md) |
+| Twenty compliance checks, failures included | [`engine/VALIDATION.md`](engine/VALIDATION.md) |
 
 ## What is and isn't verified
 
-**Verified**: the chain runs end-to-end on 13 real runs (including one full retrospective comparison); 76 structural-guarantee tests lock mechanisms rather than wording; all four loop exits were driven offline with real judgment outputs.
+**Verified**: the chain runs end-to-end on 13 real runs (including one full retrospective comparison); 83 structural-guarantee tests lock mechanisms rather than wording; all four loop exits were driven offline with real judgment outputs.
 
 **Not verified**: no real run has yet completed a second round; judge and re-judge come from the same vendor; the retrospective is one project, run once.
 
