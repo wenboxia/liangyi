@@ -640,15 +640,16 @@ class Orchestrator:
         elif step.decision_point:
             # 影子模式：条件触发点的检测器照跑，只记录，绝不叫人。
             #
-            # 起因是一个尴尬的事实：条件触发检测器至今一次都没真正执行过。七次
-            # 运行全是 off 或 minimal，trace 里 21 条相关记录全是「档位未启用」。
+            # 起因是一个尴尬的事实（2026-09-08 时）：条件触发检测器至今一次都没真正
+            # 执行过。七次运行全是 off 或 minimal，trace 里 21 条相关记录全是「档位未启用」。
             # 它原来只在 full 档跑，而 full 档已被砍掉 —— 检测器改成两档都跑，
             # 只记录不打断。
             #
             # 影子模式几乎免费地解决这个问题：_run_gate() 只读 artifact + 调
-            # 检测器，不写任何东西；不调 _ask_human() 意味着 off 仍是零人工介入，
-            # 消融对照组的有效性零损伤，链条内容和可复现性都不变。代价是每条链
-            # 多三次 deepseek-v4-flash 调用。
+            # 检测器，不写任何东西；不调 _ask_human() 意味着 auto 仍是零人工介入，
+            # 链条内容和可复现性都不变。代价：每个检测点跑 3 票 gpt-5.6-luna
+            # （gate.DETECTOR_MODEL，2026-09-05 从 deepseek-v4-flash 换来），
+            # 三个检测点每条链共 9 次小调用。
             #
             # 换来的是：跑完就知道检测器到底会不会响。一次不响，full 就是死重。
             if step.decision_point in MUST_STOP:

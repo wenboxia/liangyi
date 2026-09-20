@@ -310,6 +310,9 @@ def check_hard_rules(profile: str = "primary") -> list[str]:
       2. P2 链条必须跨维度（至少一对底模在 A 或 B 上不重合）
       3. P2D 拆台必须由 A3 任务优先档扮演
       4. 单盲必须零上下文（由 window.py 在运行时强制）
+
+    本函数只校验前三条。第 4 条不在开跑前预检里：window.py 在任何试图给
+    零上下文窗口注入历史的调用点抛异常，是运行时而非配置期的保证。
     """
     violations: list[str] = []
     mapping = {w: resolve_model(w, profile) for w in WINDOWS}

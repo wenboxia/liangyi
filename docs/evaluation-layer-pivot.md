@@ -90,7 +90,7 @@ Anthropic《How we contain Claude across products》2026-05-25 逐字：
 
 ### 主展示（使用者自己提的，是可测的那条路）
 
-> 状态（2026-09-15）：**已做**。落地为 `../retrospective/voyageguard/atomic-points.md`（13 条原子点 + 逐版矩阵）
+> 状态（2026-09-15）：**已做**。落地为 `../retrospective/voyageguard/atomic-points.md`（14 条原子点 + 逐版矩阵）
 > 和 [`case-voyageguard.md`](case-voyageguard.md)（数字由脚本从运行记录生成）。
 
 **逐步追踪 idea 的原子考虑点**：

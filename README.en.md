@@ -7,7 +7,7 @@
 One idea in, one proposal out — after four rounds of adversarial review.
 
 - **P1 adversarial drafting**: two experts on different base-model coordinates draft independently; a scribe merges them into v1.
-- **P2 four-round critique chain**: investor critique → zero-context blind review → drift detection with rollback → premise teardown with kill-shot grading. Writers and reviewers come from different vendors and alignment lineages — no model both writes and reviews its own work.
+- **P2 four-round critique chain**: investor critique → zero-context blind review → drift detection with rollback → premise teardown with kill-shot grading. The scribe and each of the four critiques run in separate windows that share no context; the blind review, the premise teardown and Expert B come from vendors and alignment lineages different from the scribe's.
 - **Multi-exit loop**: the teardown verdict drives rollback — back to P1 (full rerun), back to P2 (re-run the critique chain), or structural-deadlock exit; capped at two rounds.
 - **HITL nodes**: human decision points at drift-rollback and teardown-verdict; switch between `auto` and `hitl` tiers.
 
@@ -89,9 +89,9 @@ Two things are judged separately: **can the coordinate be determined** (hard rul
 
 ## What is and isn't verified
 
-**Verified**: the chain runs end-to-end on 13 real runs (including one full retrospective comparison); 83 structural-guarantee tests lock mechanisms rather than wording; all four loop exits were driven offline with real judgment outputs.
+**Verified**: the chain runs end-to-end on 13 real runs (including one full retrospective comparison); 83 structural-guarantee tests lock mechanisms rather than wording; loop exits A (back to P1) and B (back to P2) were driven offline with real judgment outputs.
 
-**Not verified**: no real run has yet completed a second round; judge and re-judge come from the same vendor; the retrospective is one project, run once.
+**Not verified**: no real run has yet completed a second round; the structural-deadlock exit C needs an issue-overlap argument the orchestrator never passes, so it is unreachable in real runs and untested; judge and re-judge come from the same vendor; the retrospective is one project, run once.
 
 One more thing, stated plainly: **the devil's-advocate verdict is unstable.** Same scenario, same document, three runs graded "5 premise hits / 0 fatal", "5 / 2", "0 / 0". The one point in the chain that can overturn direction sits on a dice roll. Details in [`docs/evaluation.md`](docs/evaluation.md).
 
