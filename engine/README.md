@@ -121,7 +121,7 @@ python -m engine.run --resume runs/20260829-230613-dev-diagnose
 - `2D-fix` —— 框架内修改还是回 P1。四个变种场景全部卡在这里
 
 **条件触发检测器**在所有档位后台跑、**只记录不打断**（影子模式，2026-09-08 起）。
-检测器在 `gate.py`，用便宜模型，单次约 $0.0002，结果进 `trace.jsonl`：
+检测器在 `gate.py`，用 `gpt-5.6-luna`（`DETECTOR_MODEL`，09-05 从推理模型换来），每个检测点跑 3 票取多数，结果进 `trace.jsonl`：
 
 - `P0-review` —— 精炼版是否偏离原意
 - `scope-creep` —— 执笔者是否把批判的攻击范围扩大化
