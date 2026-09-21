@@ -11,7 +11,9 @@
 
 为什么要这么做：**单个模型自己写、自己审，审不出自己的盲区。**
 
-**在线体验 →** https://liangyi-five.vercel.app　把你的想法输进去，看它走完全部 13 步（演示档，每人每天 3 次）。
+**在线体验 →** https://liangyi-five.vercel.app　
+
+把你的想法输进去，看它走完全部 13 步（演示档，每人每天 3 次）。
 
 [English](README.en.md)
 
