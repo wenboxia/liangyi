@@ -2,8 +2,11 @@
 两仪 · 在线入口的后端核心
 
 一次调用 = 链条走一步。运行目录里的所有文件（scenario.yaml / run.json /
-trace.jsonl / decision-log.md / artifacts/round-1/*）以一个 {相对路径: 内容}
+trace.jsonl / decision-log.md / artifacts/round-N/*）以一个 {相对路径: 内容}
 的字典在客户端和服务端之间来回传，**服务端不保存任何状态**。
+
+多轮：一轮的最后一步跑完，同一个请求里按引擎的路由决定要不要开下一轮
+（Orchestrator.advance，与命令行共用），开了就把下一轮第一步交回浏览器。
 
 为什么这么做而不是一个请求跑完：完整链在演示档也要八到十分钟，
 serverless 单函数装不下；分步之后每一步最长一两分钟，任何平台都能跑。
@@ -25,7 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from engine.orchestrator import IDEA_SEPARATOR, Orchestrator, Scenario  # noqa: E402
+from engine.orchestrator import (EXIT_BACK_P1, EXIT_BACK_P2, IDEA_SEPARATOR,  # noqa: E402
+                                 Orchestrator, Scenario)
 from engine.steps import CHAIN  # noqa: E402
 
 PROFILE = "demo"
@@ -79,7 +83,9 @@ def plan() -> list[dict]:
             for s in CHAIN]
 
 
-PENDING = "artifacts/round-1/_pending.json"   # hitl 必停点等人时，这一步的产出暂存在这
+PENDING = "_pending.json"                      # hitl 必停点等人时，这一步的产出暂存在运行目录根
+LEGACY_PENDING = "artifacts/round-1/_pending.json"   # 旧位置，续跑老运行时兼容
+ROUND_TITLE = {EXIT_BACK_P1: "回 P1 · 整链重跑", EXIT_BACK_P2: "回 P2 · 重跑批判"}
 
 
 def _awaiting_payload(orch, step, raw: str) -> dict:
@@ -102,8 +108,23 @@ def _awaiting_payload(orch, step, raw: str) -> dict:
         brief = advisor.build_brief(orch, pos, interact.OPTIONS.get(pos, []))
     except Exception:
         brief = ""
-    return {"position": pos, "step_id": step.id, "title": STEP_INFO[step.id][0],
+    return {"position": pos, "step_id": step.id, "title": STEP_INFO[step.id][0], "round": orch.round,
             "options": options, "context": context, "shift": shift, "brief": brief}
+
+
+def _close_round(orch, tmp: Path, exit_code: str, why: str) -> dict:
+    """一轮结束：按出口开下一轮，或者收尾。返回要并进响应的字段。"""
+    if orch.advance(exit_code, why):
+        nxt = orch.pending()
+        return {"done": False, "verdict": None, "next": nxt[0].id if nxt else None,
+                "round_started": {"round": orch.round, "exit": exit_code,
+                                  "title": ROUND_TITLE[exit_code], "why": why,
+                                  "from_step": nxt[0].id if nxt else None}}
+    orch.finish()
+    meta = json.loads((tmp / "run.json").read_text(encoding="utf-8"))
+    return {"done": True, "verdict": meta.get("verdict"), "next": None,
+            "rounds": meta.get("rounds", orch.round), "exit": orch.exit_code,
+            "why": orch.exit_reason, "total_cost": meta.get("total_cost_usd", 0)}
 
 
 def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
@@ -118,8 +139,9 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
       files    —— 走完这一步之后运行目录里的全部文件，原样传回来即可续走
       event    —— 这一步的 trace 记录 + 产物内容 + 这一步写的决策日志片段
       awaiting —— hitl 到必停点了：这一步的产出已暂存，等人选；带选项、上下文、材料包
-      done     —— 13 步走完了没有
-      verdict  —— 走完之后的判定（produced-v5 / back-to-p1）
+      round_started —— 这一步收尾了一轮并开出下一轮：{round, exit, title, why, from_step}
+      done     —— 整条链（含回退后的第 2 轮）走完了没有
+      verdict  —— 走完之后的判定（最后一轮的 produced-v5 / back-to-p1）
     """
     from engine.orchestrator import AwaitingDecision, BackToP1
     from engine.providers import Completion
@@ -142,6 +164,9 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
         # 上一个请求在必停点暂存的产出：带回来就不再调模型
         precomputed = {}
         pend = tmp / PENDING
+        legacy = tmp / LEGACY_PENDING
+        if legacy.exists() and not pend.exists():
+            legacy.replace(pend)
         if pend.exists():
             j = json.loads(pend.read_text(encoding="utf-8"))
             precomputed[j["step_id"]] = Completion(**j["completion"])
@@ -157,15 +182,12 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
         orch = Orchestrator(scenario, profile=PROFILE, mode=mode, resume_dir=tmp,
                             decision_provider=provider if mode == "hitl" else None,
                             precomputed=precomputed)
-        orch.restore()
+        orch.restore()           # 引擎按最大的 round-N 目录接着那一轮走
         todo = orch.pending()
         if not todo:
             exit_code, why = orch._decide_next_round()
-            orch.finish()
-            meta = json.loads((tmp / "run.json").read_text(encoding="utf-8"))
-            return {"files": _read_files(tmp), "event": None, "done": True,
-                    "verdict": meta.get("verdict"), "exit": exit_code, "why": why,
-                    "total_cost": meta.get("total_cost_usd", 0), "next": None}
+            closing = _close_round(orch, tmp, exit_code, why)
+            return {"files": _read_files(tmp), "event": None, **closing}
 
         step = todo[0]
         log_before = (tmp / "decision-log.md").read_text(encoding="utf-8") \
@@ -185,21 +207,16 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
                     "verdict": None, "next": step.id,
                     "awaiting": _awaiting_payload(orch, step, pending.raw)}
         except BackToP1 as back:
-            # 人判定前提错了。和 auto 档模型自判一样收场：留一份判定书，不产出 v5。
+            # 人判定前提错了。引擎已写好判定书并记了这一步；和模型判回 P1 走同一个出口。
+            ran_round = orch.round
             rec = orch.trace.steps[-1] if len(orch.trace.steps) > before else None
-            head = ""
-            if step.id in files_pending_raw(files):
-                head = files_pending_raw(files)[step.id]
-            judgment = (head.split(IDEA_SEPARATOR)[0] if IDEA_SEPARATOR in head else head).strip()
-            judgment += f"\n\n## 人工判定\n\n回 P1 重做。{back}\n"
-            orch.write_artifact("P2D-fix-judgment.md", judgment)
-            orch.finish()
-            meta = json.loads((tmp / "run.json").read_text(encoding="utf-8"))
-            return {"files": _read_files(tmp), "done": True, "verdict": "back-to-p1", "next": None,
-                    "event": {"step_id": step.id, "title": STEP_INFO[step.id][0],
-                              "output_file": "P2D-fix-judgment.md", "content": judgment,
-                              "decision_log": "", "record": _record_dict(rec) if rec else None,
-                              "roles": None, "skipped": False, "human": decision}}
+            judgment = orch.read_artifact("P2D-fix-judgment.md") if orch.has_artifact("P2D-fix-judgment.md") else ""
+            event = {"step_id": step.id, "round": ran_round, "title": STEP_INFO[step.id][0],
+                     "output_file": "P2D-fix-judgment.md", "content": judgment,
+                     "decision_log": "", "record": _record_dict(rec) if rec else None,
+                     "roles": None, "skipped": False, "human": decision}
+            closing = _close_round(orch, tmp, EXIT_BACK_P1, f"人工判定回 P1：{back}")
+            return {"files": _read_files(tmp), "event": event, **closing}
 
         rec = _record_dict(orch.trace.steps[-1]) if len(orch.trace.steps) > before else None
         out_name = next((n for n in (step.output, "P2D-fix-judgment.md")
@@ -209,12 +226,12 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
             if (tmp / "decision-log.md").exists() else ""
         log_delta = log_after[len(log_before):].strip()
 
+        ran_round = orch.round
         remaining = orch.pending()
-        done = not remaining
-        verdict = None
-        if done:
-            orch.finish()
-            verdict = json.loads((tmp / "run.json").read_text(encoding="utf-8")).get("verdict")
+        closing = {"done": False, "verdict": None, "next": remaining[0].id if remaining else None}
+        if not remaining:
+            exit_code, why = orch._decide_next_round()
+            closing = _close_round(orch, tmp, exit_code, why)
 
         # P1.0 跑完角色就定了 —— 把它带给前端展示「两仪」到底是哪两仪
         roles = None
@@ -225,22 +242,12 @@ def run_one_step(files: dict[str, str], seed: str, mode: str = "auto",
 
         return {
             "files": _read_files(tmp),
-            "event": {"step_id": step.id, "title": STEP_INFO[step.id][0],
+            "event": {"step_id": step.id, "round": ran_round, "title": STEP_INFO[step.id][0],
                       "output_file": out_name, "content": content,
                       "decision_log": log_delta, "record": rec, "roles": roles,
                       "skipped": rec is None,
                       "human": decision if (decision and decision.get("position") == step.decision_point) else None},
-            "done": done, "verdict": verdict,
-            "next": remaining[0].id if remaining else None,
+            **closing,
         }
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
-def files_pending_raw(files: dict[str, str]) -> dict[str, str]:
-    """从请求带来的 files 里取出暂存的 raw（BackToP1 收场时要用它写判定书）。"""
-    try:
-        j = json.loads(files.get(PENDING, "") or "{}")
-        return {j["step_id"]: j["raw"]} if j else {}
-    except Exception:
-        return {}

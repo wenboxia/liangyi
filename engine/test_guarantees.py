@@ -12,11 +12,15 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from .config import PROFILES, check_hard_rules
 from .window import WindowPool, ZeroContextViolation
 
 PASS, FAIL = "\033[32m✓\033[0m", "\033[31m✗\033[0m"
+
+# 真实运行留下的分级表与判定书（从本地 runs/ 摘出、随仓库提交），克隆下来就能跑
+FIXTURE_RUNS = str(Path(__file__).resolve().parent / "fixtures" / "runs")
 _results: list[bool] = []
 
 
@@ -322,7 +326,7 @@ def test_loop_routing() -> None:
     # ---- 一、路由表在真实数据上分得开 ----
     import glob, os
     got = {}
-    for d in sorted(glob.glob("runs/*-auto")):
+    for d in sorted(glob.glob(f"{FIXTURE_RUNS}/*-auto")):
         name = os.path.basename(d).split("-", 2)[2].rsplit("-", 1)[0]
         log = open(f"{d}/decision-log.md", encoding="utf-8").read()
         j = f"{d}/artifacts/P2D-fix-judgment.md"
@@ -460,7 +464,7 @@ def test_grading_row_count() -> None:
     import glob, os, re
     row = re.compile(r"^\s*\|\s*(?:\d{1,3}|[一二三四五六七八九十]{1,3})\s*\|")
     checked = 0
-    for d in sorted(glob.glob("runs/*/")):
+    for d in sorted(glob.glob(f"{FIXTURE_RUNS}/*/")):
         raw = ""
         for f in (f"{d}decision-log.md", f"{d}artifacts/P2D-fix-judgment.md"):
             if os.path.exists(f):
@@ -499,8 +503,8 @@ def test_loop_turns_on_real_judgments() -> None:
     print("\n循环装置（离线 · 真实判定书驱动）")
 
     REAL = {
-        "back-to-p1": "runs/20260910-105702-subscription-manager-loopB/artifacts/round-1/P2D-fix-judgment.md",
-        "back-to-p2": "runs/20260902-085850-subscription-manager-auto/decision-log.md",
+        "back-to-p1": f"{FIXTURE_RUNS}/20260910-105702-subscription-manager-loopB/artifacts/round-1/P2D-fix-judgment.md",
+        "back-to-p2": f"{FIXTURE_RUNS}/20260902-085850-subscription-manager-auto/decision-log.md",
     }
     for k, f in REAL.items():
         if not _P(f).exists():
@@ -643,6 +647,180 @@ def test_web_decision_hooks() -> None:
         check(o.verdict == "back-to-p1", "网页决定回 P1 → verdict 记为 back-to-p1")
 
 
+
+def _fake_completion(text):
+    from .providers import Completion
+    return Completion(content=text, reasoning=None, model_id="fake", tokens_in=1,
+                      tokens_out=1, reasoning_tokens=0, cost_usd=0.001, duration_ms=1)
+
+
+_KILL = ("分级表\n| # | 论据 | 具体性 | 严重度 | 标签 |\n|---|---|---|---|---|\n"
+         "| 1 | a | H | K | Kill shot |\n| 2 | b | H | K | Kill shot |\n| 3 | c | M | F | Fixable |\n")
+_PREMISE = ("分级表\n| # | 论据 | 具体性 | 严重度 | 标签 |\n|---|---|---|---|---|\n"
+            "| 1 | a | M | K | Fixable |\n| 2 | b | L | K | Fixable |\n| 3 | c | M | K | Fixable |\n"
+            "| 4 | d | M | F | Fixable |\n")
+_MINOR = ("分级表\n| # | 论据 | 具体性 | 严重度 | 标签 |\n|---|---|---|---|---|\n"
+          "| 1 | a | M | F | Fixable |\n")
+
+
+def _fake_output(step_id: str, round_no: int, plan: dict) -> str:
+    """假模型：按步骤和轮次给出能被引擎正确解析的产出。plan = {轮次: back / p2 / v5}。"""
+    from .orchestrator import IDEA_SEPARATOR
+    if step_id == "P1.0":
+        return ("role_a: 甲\nstance_a: 先做小\nrole_b: 乙\nstance_b: 先做大\n"
+                "tension: 同一决策给出相反答案\n")
+    if step_id == "2D-fix":
+        kind = plan.get(round_no, "v5")
+        if kind == "back":
+            return f"【判定】回P1\n{_KILL}{IDEA_SEPARATOR}\n判定书：方向被推翻"
+        if kind == "p2":
+            return f"【判定】产出v5\n{_PREMISE}{IDEA_SEPARATOR}\n第 {round_no} 轮 v5 正文"
+        return f"【判定】产出v5\n{_MINOR}{IDEA_SEPARATOR}\n第 {round_no} 轮 v5 正文"
+    return f"决策日志 {step_id}\n{IDEA_SEPARATOR}\n第 {round_no} 轮 {step_id} 产出"
+
+
+def _fake_orch(plan: dict, mode="auto", provider=None):
+    """跑整条链用的假编排器：模型调用与影子检测器都换成本地假实现，不发 API。"""
+    import tempfile
+    from pathlib import Path as _P
+    from .orchestrator import Orchestrator, Scenario
+    from .gate import GateResult
+    sc = Scenario.load(_P("scenarios/dev-diagnose.yaml"))
+    o = Orchestrator(sc, run_root=_P(tempfile.mkdtemp()), mode=mode, decision_provider=provider)
+    calls = []
+
+    def _call(step, extra=""):
+        calls.append((o.round, step.id))
+        c = _fake_completion(_fake_output(step.id, o.round, plan))
+        o._last_completion = c
+        return c.content
+    o._call_step = _call
+    o._run_gate = lambda step, content: GateResult(step.decision_point, False, "测试桩")
+    return o, calls
+
+
+def test_multi_round_driver() -> None:
+    """
+    多轮驱动 run_chain() 真的跑出第二轮 —— 命令行入口走的就是它。
+
+    锁五件事：出口 A 从 P0 整链重跑、窗口全新；第 2 轮再判回 P1 被兜底改判为交付；
+    出口 B 只从 P2A 起、上一轮 v5 成为本轮 v1；预算闸拦得住；hitl 人判前提错了
+    第 1 轮开新一轮、第 2 轮以判定书收场。
+    """
+    import json
+    from .orchestrator import EXIT_BACK_P1, EXIT_BACK_P2, route
+    from .interact import Decision
+
+    print("\n多轮驱动（run_chain · 假模型）")
+
+    # 出口 A：第 1 轮判回 P1 → 第 2 轮整链重跑；第 2 轮再判回 P1 → 兜底交付
+    o, calls = _fake_orch({1: "back", 2: "back"})
+    rounds_seen = []
+    o.run_chain(on_round=lambda n, code, why: rounds_seen.append((n, code)))
+    o.finish()
+    meta = json.loads((o.run_dir / "run.json").read_text(encoding="utf-8"))
+    r2 = [sid for r, sid in calls if r == 2]
+    check(rounds_seen == [(2, EXIT_BACK_P1)], "第 1 轮判回 P1 → 开出第 2 轮（出口 A）", f"实际 {rounds_seen}")
+    check(r2[:1] == ["P0"] and "2D-fix" in r2, "第 2 轮从 P0 起整链重跑到 2D-fix", f"第 2 轮 {r2}")
+    check((o.run_dir / "artifacts" / "round-1" / "P2D-fix-judgment.md").exists()
+          and (o.run_dir / "artifacts" / "round-2" / "idea-v5.md").exists(),
+          "第 1 轮留判定书、第 2 轮被兜底改判为交付 v5")
+    check(meta.get("rounds") == 2 and meta.get("verdicts") == ["back-to-p1", "produced-v5"]
+          and meta.get("verdict") == "produced-v5",
+          "run.json 记下两轮、每轮判定与最终判定", f"实际 {meta.get('rounds')} {meta.get('verdicts')}")
+
+    # 出口 B：K 占比 ≥ 60% 且无致命论据 → 只重跑批判链
+    o, calls = _fake_orch({1: "p2", 2: "v5"})
+    rounds_seen = []
+    o.run_chain(on_round=lambda n, code, why: rounds_seen.append((n, code)))
+    r2 = [sid for r, sid in calls if r == 2]
+    art = o.run_dir / "artifacts"
+    check(rounds_seen == [(2, EXIT_BACK_P2)], "打前提的论据占比 ≥ 60% → 开出第 2 轮（出口 B）", f"实际 {rounds_seen}")
+    check(r2[:1] == ["P2A"] and "P0" not in r2, "出口 B 从 P2A 起，不重跑 P0/P1", f"第 2 轮 {r2}")
+    check((art / "round-2" / "idea-v1.md").read_text(encoding="utf-8")
+          == (art / "round-1" / "idea-v5.md").read_text(encoding="utf-8"),
+          "上一轮 v5 逐字成为本轮 v1")
+
+    # 正常交付：一轮结束
+    o, calls = _fake_orch({1: "v5"})
+    o.run_chain()
+    check(o.round == 1 and all(r == 1 for r, _ in calls), "没有回退信号时一轮交付")
+
+    # 预算闸：第 1 轮花费已达上限 → 不开第 2 轮
+    o, calls = _fake_orch({1: "back"})
+    import engine.orchestrator as orch_mod
+    saved = orch_mod.MAX_BUDGET_USD
+    orch_mod.MAX_BUDGET_USD = 0.0
+    try:
+        o.run_chain()
+    finally:
+        orch_mod.MAX_BUDGET_USD = saved
+    check(o.round == 1 and o.exit_code == "budget-capped", "预算闸：花费到上限就不开第 2 轮",
+          f"实际 round={o.round} exit={o.exit_code}")
+
+    # hitl：人在第 1 轮判前提错了 → 开第 2 轮；第 2 轮再判 → 两轮封顶，以判定书收场
+    def provider(step, raw, gate):
+        return Decision("back-to-p1", rationale="前提不成立") if step.id == "2D-fix" else Decision("accept")
+    o, calls = _fake_orch({1: "v5", 2: "v5"}, mode="hitl", provider=provider)
+    rounds_seen = []
+    o.run_chain(on_round=lambda n, code, why: rounds_seen.append((n, code)))
+    o.finish()
+    meta = json.loads((o.run_dir / "run.json").read_text(encoding="utf-8"))
+    check(rounds_seen == [(2, EXIT_BACK_P1)], "hitl 人判前提错了 → 走出口 A 开第 2 轮", f"实际 {rounds_seen}")
+    check(o.round == 2 and meta.get("verdict") == "back-to-p1"
+          and (o.run_dir / "artifacts" / "round-2" / "P2D-fix-judgment.md").exists(),
+          "第 2 轮人再判前提错了 → 两轮封顶，以判定书收场")
+    check("人工判定" in (o.run_dir / "artifacts" / "round-1" / "P2D-fix-judgment.md").read_text(encoding="utf-8"),
+          "人工判定写进判定书，这一步的花费照记",
+          f"trace 步数 {meta.get('steps')}")
+
+    # 路由不再有死锁出口
+    import inspect as _inspect
+    check(list(_inspect.signature(route).parameters) == ["raw", "round_no"],
+          "route() 只有两个出口判据参数，没有议题重叠度")
+
+
+def test_web_multi_round() -> None:
+    """网页一步一个请求，也能跨轮走完：一轮结束的那个请求里开出下一轮。"""
+    import engine.gate as gate_mod
+    import engine.orchestrator as orch_mod
+    from .gate import GateResult
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
+    from chain_api import run_one_step
+
+    print("\n网页跨轮（run_one_step · 假模型）")
+    plan = {1: "back", 2: "v5"}
+
+    def _call(self, step, extra=""):
+        c = _fake_completion(_fake_output(step.id, self.round, plan))
+        self._last_completion = c
+        return c.content
+
+    saved = (orch_mod.Orchestrator._call_step, orch_mod.Orchestrator._run_gate, gate_mod.check_fake_tension)
+    orch_mod.Orchestrator._call_step = _call
+    orch_mod.Orchestrator._run_gate = lambda self, step, content: GateResult(step.decision_point, False, "测试桩")
+    gate_mod.check_fake_tension = lambda *a, **k: GateResult("fake-tension", False, "测试桩")
+    try:
+        files, events, started, out = {}, [], [], None
+        for _ in range(40):
+            out = run_one_step(files, "一个足够长的测试想法，用来驱动网页分步接口", mode="auto")
+            files = out["files"]
+            if out.get("event"):
+                events.append((out["event"]["round"], out["event"]["step_id"]))
+            if out.get("round_started"):
+                started.append(out["round_started"])
+            if out.get("done"):
+                break
+    finally:
+        orch_mod.Orchestrator._call_step, orch_mod.Orchestrator._run_gate, gate_mod.check_fake_tension = saved
+
+    check(len(started) == 1 and started[0]["round"] == 2 and started[0]["from_step"] == "P0",
+          "第 1 轮判回 P1 的那个请求里开出第 2 轮，下一步是 P0", f"实际 {started}")
+    check(out and out.get("done") and out.get("verdict") == "produced-v5" and out.get("rounds") == 2,
+          "第 2 轮交付 v5，整条链收尾", f"实际 {out and {k: out.get(k) for k in ('done', 'verdict', 'rounds')}}")
+    check(any(r == 2 and sid == "2D-fix" for r, sid in events) and "artifacts/round-2/idea-v5.md" in files,
+          "第 2 轮的步骤带着轮次号回到浏览器，产物在 round-2 目录")
+
 def main() -> int:
     print("两仪论工作流 · 结构保证验证")
     print("=" * 52)
@@ -657,6 +835,8 @@ def main() -> int:
     test_grading_row_count()
     test_loop_turns_on_real_judgments()
     test_web_decision_hooks()
+    test_multi_round_driver()
+    test_web_multi_round()
 
     passed, total = sum(_results), len(_results)
     print("\n" + "=" * 52)

@@ -16,7 +16,6 @@ STYLES = """  classDef anchor fill:#F0EEE6,stroke:#B0AEA5,color:#141413
   classDef route fill:#FFF4D6,stroke:#C9A227,color:#141413
   classDef exitA fill:#F8DADA,stroke:#B04141,color:#141413
   classDef exitB fill:#DCEEF3,stroke:#3E7A8C,color:#141413
-  classDef exitC fill:#E9E8E4,stroke:#666,color:#141413
   classDef done fill:#141413,stroke:#141413,color:#FAF9F5"""
 
 HEAD = """  SEED([原初想法]) --> P0[P0 忠实精炼<br/>anchor]
@@ -42,29 +41,27 @@ HITL_MID = """  P2C --> CR[2C-rollback → v4<br/>执笔]
   DF --> H2{{★ HITL ② 停下等你<br/>分级表 + 判定}}
   H2 -- 按判定走 --> R1
   H2 -- 按我的指令改 --> DF2[2D-fix 带指令重跑一次 → v5<br/>执笔] --> R1
-  H2 -- ★ 前提确实错了 --> HSTOP([判定回 P1 · 留判定书<br/>本条链结束])"""
+  H2 -- ★ 前提确实错了<br/>第 1 轮 → 出口 A；第 2 轮 → 以判定书收场 --> EA"""
 
 TAIL = """  R1{致命论据 ≥ 2？<br/>K 级 × 具体性高}
   R1 -- 否 --> V5[产出 v5]
   R1 -- 是 · 第 1 轮 --> EA[出口 A · 回 P1<br/>整链重跑]
-  R1 -- 是 · 第 2 轮 · 议题重叠 ≥ 60% --> EC([出口 C · 结构性死锁<br/>编排器不传重叠度 · 真实运行不可达])
-  R1 -- 是 · 第 2 轮 · 重叠 < 60% --> FORCE[终止条件兜底<br/>强制产出 v5] --> V5
+  R1 -- 是 · 第 2 轮 --> FORCE[终止条件兜底<br/>强制产出 v5] --> V5
   V5 --> R2{K 占比 ≥ 60%<br/>且第 1 轮？}
   R2 -- 是 --> EB[出口 B · 回 P2<br/>v5 当新初稿]
   R2 -- 否 --> END([结束])
-  EA -. 新一轮 · 窗口全新开<br/>run_chain() 实现 · 当前入口未接 .-> P0
-  EB -. 新一轮 · 重跑批判链<br/>run_chain() 实现 · 当前入口未接 .-> P2A
+  EA -. 第 2 轮 · 窗口全新开 .-> P0
+  EB -. 第 2 轮 · 重跑批判链 .-> P2A
   class P0,P10,P1A,P14,P2A,AF,BF,P2C,CR,DF anchor
   class P1B,P2D divA
   class P2B divB
   class R1,R2 route
   class EA exitA
   class EB exitB
-  class EC exitC
   class END,V5 done"""
 
 auto = "\n".join(["flowchart TB", STYLES, HEAD, AUTO_MID, TAIL])
-hitl = "\n".join(["flowchart TB", STYLES, HEAD, HITL_MID, TAIL, "  class H1,H2 hitl\n  class CR2,DF2 anchor\n  class HSTOP exitA"])
+hitl = "\n".join(["flowchart TB", STYLES, HEAD, HITL_MID, TAIL, "  class H1,H2 hitl\n  class CR2,DF2 anchor"])
 (ROOT / "docs/flow-auto.mmd").write_text(auto + "\n", encoding="utf-8")
 (ROOT / "docs/flow-hitl.mmd").write_text(hitl + "\n", encoding="utf-8")
 
@@ -73,7 +70,7 @@ readme = ROOT / "README.md"; s = readme.read_text(encoding="utf-8")
 start = "<!-- flow:start -->"; end = "<!-- flow:end -->"
 # 两张都放进折叠块：总览由 docs/images/architecture.png 承担，README 首屏不被长图占满
 block = (f"{start}\n<details>\n<summary><b>auto 档完整状态机</b>（全自动一次不停）</summary>\n\n```mermaid\n{auto}\n```\n\n</details>\n\n"
-         f"<details>\n<summary><b>hitl 档完整状态机</b>（只有 ★ 处不同：两个停点各有三个选项；选第 2 / 3 项那一步带指令重跑一次，2D 选「前提确实错了」本条链以回 P1 判定结束）</summary>\n\n```mermaid\n{hitl}\n```\n\n</details>\n{end}")
+         f"<details>\n<summary><b>hitl 档完整状态机</b>（只有 ★ 处不同：两个停点各有三个选项；选第 2 / 3 项那一步带指令重跑一次，2D 选「前提确实错了」走出口 A）</summary>\n\n```mermaid\n{hitl}\n```\n\n</details>\n{end}")
 if start in s:
     s = s[:s.index(start)] + block + s[s.index(end) + len(end):]
 else:

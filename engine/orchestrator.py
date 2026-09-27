@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -100,10 +101,9 @@ class Scenario:
 
 # ---------------------------------------------------------------- 路由
 
-# 出口，从六次手工实验里反推出来的三种真实决定
+# 出口，从手工实验里反推出来的两种回退 + 正常结束
 EXIT_BACK_P1 = "back-to-p1"       # 方向被推翻，整链重跑（Agent 评测 R2、ExamSniper X/Y R2）
 EXIT_BACK_P2 = "back-to-p2"       # 「v5 还需验证」，只重压 P2 链条（人生决策 R2）
-EXIT_DEADLOCK = "structural-deadlock"   # 重跑也撞同一堵墙（美团：「死循环是结构性的」）
 EXIT_DONE = "done"
 
 # 两道闸
@@ -118,11 +118,6 @@ MAX_BUDGET_USD = 3.0    # 单链实测 $1.2，两轮约 $2.4。参照大厂「�
 # 但 n=5，属于小样本上定的阈值，**不是有理论依据的数**。
 # 跑够 10 条再回看要不要调。
 K_RATIO_THRESHOLD = 0.60
-
-# 议题重叠阈值 —— 判「重跑无效」。
-# 来源：longterm-and-reference.md 实测 Round 1 vs Round 2「60% 底层重叠」，
-# 而美团那次的结论是「P2D-fix 死循环是结构性的」。
-OVERLAP_THRESHOLD = 0.60
 
 # 分级表的数据行 —— **靠内容认，不靠格式认**。
 #
@@ -196,7 +191,7 @@ def grading_anomalies(text: str) -> list[str]:
     return out
 
 
-def route(raw: str, round_no: int, overlap: float | None = None) -> tuple[str, str]:
+def route(raw: str, round_no: int) -> tuple[str, str]:
     """
     2D-fix 之后走哪个出口。返回 (出口, 一句话理由)。
 
@@ -207,6 +202,8 @@ def route(raw: str, round_no: int, overlap: float | None = None) -> tuple[str, s
     AI 负责的是产出信号（分级表、议题重叠度），代码负责按规则路由 ——
     这也符合方法论自己的判据：边界决策可以「设计时由人做完、用规则消化掉」，
     前提是规则由人在系统外设计。这张路由表就是那条规则。
+
+    第 2 轮不再回退：仍有致命论据时由终止条件兜底强制交付（两轮封顶）。
     """
     total, K, ks = parse_grading(raw)
     k_ratio = K / total if total else 0.0
@@ -214,8 +211,6 @@ def route(raw: str, round_no: int, overlap: float | None = None) -> tuple[str, s
     if ks >= 2:
         if round_no < MAX_ROUNDS:
             return EXIT_BACK_P1, f"{ks} 个 kill shot，方向被推翻"
-        if overlap is not None and overlap >= OVERLAP_THRESHOLD:
-            return EXIT_DEADLOCK, f"第 {round_no} 轮仍 {ks} 个 kill shot，议题重叠 {overlap:.0%}，重跑无效"
         return EXIT_DONE, f"第 {round_no} 轮，终止条件兜底强制产出 v5"
 
     if round_no == 1 and k_ratio >= K_RATIO_THRESHOLD:
@@ -285,6 +280,11 @@ class Orchestrator:
         # 系统分不出来。分了目录之后每轮目录一开始是空的，
         # pending() / restore() 的逻辑一个字都不用改。
         self.round = 1
+        if resume_dir is not None:
+            # 续跑一条多轮运行：接着最后一轮走，而不是回到第 1 轮
+            rounds = [int(d.name.split("-")[1]) for d in (self.run_dir / "artifacts").glob("round-*")
+                      if d.is_dir() and d.name.split("-")[1].isdigit()]
+            self.round = max(rounds, default=1)
         (self.run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -616,8 +616,22 @@ class Orchestrator:
                         human_text=f"{decision.instruction}\n{decision.rationale}",
                         round=self.round,
                     )
+                    # 人推翻了方向：这一步留一份判定书（执笔者的分级 + 人的判定），
+                    # 不产出 v5；模型这一步的花费照记。之后由 run_chain / 网页开下一轮。
+                    head = raw.split(IDEA_SEPARATOR, 1)[0].strip() if IDEA_SEPARATOR in raw else raw.strip()
+                    self._split_and_store(step, raw)
+                    reason = (decision.rationale or decision.instruction or "").strip()
+                    self.write_artifact("P2D-fix-judgment.md",
+                                        f"{head}\n\n## 人工判定\n\n回 P1 重做。{reason}\n")
+                    self.trace.record_step(
+                        step_id=step.id, phase=step.phase, window=self.pool.get(step.window),
+                        role=WINDOWS[step.window].role,
+                        inputs=list(step.artifacts.values()) or list(step.scenario_fields),
+                        output_file="P2D-fix-judgment.md", completion=completion,
+                        round=self.round,
+                    )
                     self.verdict = "back-to-p1"
-                    raise BackToP1(decision.rationale or "人判定前提错误，回 P1")
+                    raise BackToP1(reason or "人判定前提错误，回 P1")
                 if decision and decision.choice != "accept":
                     raw = self._call_step(step, extra=decision.instruction)
                     completion = self._last_completion
@@ -757,37 +771,65 @@ class Orchestrator:
         """跑 v0 基线 —— 单 AI 一次性出方案。"""
         return self.execute(BASELINE)
 
-    def run_chain(self, on_step=None, on_round=None) -> None:
+    def run_chain(self, on_step=None, on_step_done=None, on_round=None) -> None:
         """
-        跑整条链，必要时按路由结果开新一轮。
+        跑整条链，按路由结果开新一轮。命令行入口走这里；网页一步一个请求，
+        不走这个循环，但每轮结束时调的是同一个 advance()。
 
-        两道闸任一触顶就停下报告，不静默继续：
-        · MAX_ROUNDS  —— 既有终止条件，实测触发 3 次，项目史上从无第 3 轮
-        · MAX_BUDGET  —— 参照大厂「生产环境设预算是个好默认值」的实践
+        on_step(step)                   —— 每步开跑前
+        on_step_done(step, content)     —— 每步跑完后（content 为这一步的原始产出）
+        on_round(round, exit_code, why) —— 开出新一轮之后
         """
         while True:
-            for step in self.pending():
-                if on_step:
-                    on_step(step)
-                self.execute(step)
+            try:
+                for step in self.pending():
+                    if on_step:
+                        on_step(step)
+                    content = self.execute(step)
+                    if on_step_done:
+                        on_step_done(step, content)
+            except BackToP1 as back:
+                # hitl 档人判定前提错了：和模型判回 P1 走同一个出口
+                exit_code, why = EXIT_BACK_P1, f"人工判定回 P1：{back}"
+            else:
+                exit_code, why = self._decide_next_round()
 
-            exit_code, why = self._decide_next_round()
-            self.exit_reason = why
-            if exit_code == EXIT_DONE or exit_code == EXIT_DEADLOCK:
-                self.exit_code = exit_code
+            if not self.advance(exit_code, why):
                 return
-
-            spent = sum(r.cost_usd for r in self.trace.steps)
-            if spent >= MAX_BUDGET_USD:
-                self.exit_code = "budget-capped"
-                self.exit_reason = f"已花 ${spent:.2f}，触顶 ${MAX_BUDGET_USD}"
-                return
-
-            self.start_round(self.round + 1)
-            if exit_code == EXIT_BACK_P2:
-                self._seed_back_to_p2()
             if on_round:
                 on_round(self.round, exit_code, why)
+
+    def advance(self, exit_code: str, why: str) -> bool:
+        """
+        一轮结束后按出口决定要不要开下一轮。开了返回 True。
+
+        两道闸，任一触顶就收尾，并把原因写进 run.json：
+        · MAX_ROUNDS  —— 两轮封顶（第 2 轮的回退判定由终止条件兜底改判为交付）
+        · MAX_BUDGET  —— 开第 2 轮前累计花费已达上限就不开
+        """
+        self.exit_code, self.exit_reason = exit_code, why
+        if exit_code not in (EXIT_BACK_P1, EXIT_BACK_P2):
+            return False
+        if self.round >= MAX_ROUNDS:
+            self.exit_reason = f"{why}；已到第 {self.round} 轮，两轮封顶"
+            return False
+        spent = sum(r.get("cost_usd", 0) for r in self.trace._all_steps())
+        if spent >= MAX_BUDGET_USD:
+            self.exit_code = "budget-capped"
+            self.exit_reason = f"{why}；已花 ${spent:.2f}，达到 ${MAX_BUDGET_USD} 上限，不开第 {self.round + 1} 轮"
+            return False
+        self.trace.record_decision(
+            step_id="2D-fix", position="loop", mode="route", triggered=True,
+            trigger_reason=why, decision=exit_code, round=self.round,
+        )
+        self.start_round(self.round + 1)
+        # 新一轮目录里先落一份说明：为什么开了这一轮。也让「空目录」不至于在
+        # 网页来回传文件时丢掉 —— 目录是空的就传不回来，轮次会被当成没开过。
+        self.write_artifact("_round.json", json.dumps(
+            {"round": self.round, "exit": exit_code, "why": why}, ensure_ascii=False))
+        if exit_code == EXIT_BACK_P2:
+            self._seed_back_to_p2()
+        return True
 
     def _decide_next_round(self) -> tuple[str, str]:
         """看 2D-fix 的产出决定下一轮走哪个出口。"""
@@ -796,6 +838,12 @@ class Orchestrator:
                 break
         else:
             return EXIT_DONE, "链未跑到 2D-fix"
+
+        # 本轮以「回 P1」收尾（模型【判定】或人工判定）：没有 v5 可接着压，
+        # 只能整链重来 —— 不再按分级表重算，免得在没有 v5 时判出「回 P2」
+        if (self.round < MAX_ROUNDS and self.has_artifact("P2D-fix-judgment.md")
+                and not self.has_artifact("idea-v5.md")):
+            return EXIT_BACK_P1, "2D-fix 判定回 P1：方向被推翻"
 
         log = (self.run_dir / "decision-log.md")
         raw = log.read_text(encoding="utf-8") if log.exists() else ""
@@ -816,13 +864,25 @@ class Orchestrator:
 
         return route(raw, self.round)
 
+    def round_verdicts(self) -> list[str]:
+        """每轮的判定，从各轮目录的产物读 —— 续跑、网页分请求时内存里的记录不全。"""
+        out = []
+        for n in range(1, self.round + 1):
+            d = self.run_dir / "artifacts" / f"round-{n}"
+            if (d / "idea-v5.md").exists():
+                out.append("produced-v5")
+            elif (d / "P2D-fix-judgment.md").exists():
+                out.append("back-to-p1")
+        return out
+
     def finish(self, status: str = "completed") -> None:
         extra = {"windows": self.pool.summary()}
-        # 续跑时链可能还没走到 2D-fix，这时别把已有的判定覆盖成 null
-        if self.verdict is not None:
+        verdicts = self.round_verdicts() or self.verdicts
+        if verdicts:
+            extra["verdicts"] = verdicts           # 每轮一个
+            extra["verdict"] = verdicts[-1]        # 最后一轮的判定就是整条链的收场
+        elif self.verdict is not None:
             extra["verdict"] = self.verdict
-        if self.verdicts:
-            extra["verdicts"] = self.verdicts     # 每轮一个
         extra["rounds"] = self.round
         if self.exit_reason:
             extra["exit_code"] = self.exit_code

@@ -26,6 +26,13 @@ from .trace import load_trace
 console = Console()
 
 
+def _tier(meta: dict) -> str:
+    """档位：新运行记在 mode，旧运行记在 hitl（off/minimal/advised/full），统一映射成 auto/hitl。"""
+    from .gate import LEGACY_MODES
+    raw = meta.get("mode") or meta.get("hitl") or "auto"
+    return LEGACY_MODES.get(raw, raw)
+
+
 def show_summary(run_dir: Path) -> None:
     meta, records = load_trace(run_dir)
     steps = [r for r in records if r.get("kind") == "step"]
@@ -33,7 +40,8 @@ def show_summary(run_dir: Path) -> None:
 
     header = [
         f"[bold]{meta.get('scenario_name', '?')}[/bold]  ({meta.get('scenario_id')})",
-        f"配置 {meta.get('profile')} · HITL {meta.get('hitl')} · 状态 {meta.get('status', '进行中')}",
+        f"配置 {meta.get('profile')} · 档位 {_tier(meta)} · 轮次 {meta.get('rounds', 1)} · "
+        f"状态 {meta.get('status', '进行中')} · 判定 {meta.get('verdict') or '—'}",
     ]
     if meta.get("total_cost_usd") is not None:
         header.append(
