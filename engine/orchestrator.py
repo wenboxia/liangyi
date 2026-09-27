@@ -548,7 +548,7 @@ class Orchestrator:
             mode="auto-regenerate" if (gate.triggered and attempt == 1) else "auto-passed",
             triggered=gate.triggered, trigger_reason=gate.reason,
             rationale=gate.detail,
-            round=self.round,
+            round=self.round, cost_usd=gate.cost_usd,
         )
 
         if gate.triggered and attempt == 1:
@@ -593,6 +593,8 @@ class Orchestrator:
 
         if step.id == "P1.0":
             raw = self._adopt_generated_roles(raw, step)
+            if self._last_completion is not completion:     # 假对立重生成过：两次调用都记账
+                completion = _merged(completion, self._last_completion)
 
         # 人工决策点
         if step.decision_point and enabled(self.mode, step.decision_point):
@@ -633,8 +635,9 @@ class Orchestrator:
                     self.verdict = "back-to-p1"
                     raise BackToP1(reason or "人判定前提错误，回 P1")
                 if decision and decision.choice != "accept":
+                    prev = completion
                     raw = self._call_step(step, extra=decision.instruction)
-                    completion = self._last_completion
+                    completion = _merged(prev, self._last_completion)   # 被替换掉的那次也记账
                 self.trace.record_decision(
                     step_id=step.id, position=step.decision_point, mode="human",
                     triggered=True, trigger_reason=gate.reason,
@@ -649,7 +652,7 @@ class Orchestrator:
             else:
                 self.trace.record_decision(
                     step_id=step.id, position=step.decision_point, mode="auto-passed",
-                    triggered=False, trigger_reason=gate.reason,
+                    triggered=False, trigger_reason=gate.reason, round=self.round,
                 )
         elif step.decision_point:
             # 影子模式：条件触发点的检测器照跑，只记录，绝不叫人。
@@ -680,6 +683,7 @@ class Orchestrator:
                     triggered=shadow.triggered,      # 「本来会不会叫人」，不是「叫了」
                     trigger_reason=shadow.reason,
                     detail=shadow.detail or None,
+                    round=self.round, cost_usd=shadow.cost_usd,
                 )
 
         idea_part, _ = self._split_and_store(step, raw)
@@ -703,6 +707,17 @@ class Orchestrator:
                     detail="模型判了回 P1，被终止条件兜底覆盖",
                     round=self.round,
                 )
+                if IDEA_SEPARATOR not in raw:
+                    # 模型照「回 P1」的格式写了判定书、没有方案：按终止条件再要一次修订版
+                    prev = completion
+                    raw = self._call_step(step, extra=(
+                        "本次是第 2 次 P2D-fix，按终止条件必须产出修订版，不得回 P1。"
+                        "第一行写【判定】产出v5，再写分级表与一行理由，然后单独一行写 "
+                        f"{IDEA_SEPARATOR}，其后给出完整方案全文。"))
+                    completion = _merged(prev, self._last_completion)
+                    idea_part, _ = self._split_and_store(step, raw)
+                    if IDEA_SEPARATOR not in raw:        # 仍然没有方案：交付 v4，不拿判定书冒充方案
+                        idea_part = self.read_artifact("idea-v4.md")
                 back = False
 
             self.verdict = "back-to-p1" if back else "produced-v5"
@@ -736,11 +751,18 @@ class Orchestrator:
 
         返回被跳过的步骤 id。
         """
+        # 回 P2 开出的一轮里，P0/P1 的产物是从上一轮原样拷来的：不补进窗口，
+        # 否则新一轮的窗口会带着上一轮的对话（命令行 run_chain 本来就不补）。
+        seeded: set[str] = set()
+        if self.round > 1 and self.has_artifact("_round.json"):
+            meta = json.loads(self.read_artifact("_round.json"))
+            if meta.get("exit") == EXIT_BACK_P2:
+                seeded = {"P0", "P1.0", "P1A", "P1B", "P1.4"}
         skipped: list[str] = []
         for step in CHAIN:
             if not self.has_artifact(step.output):
                 break  # 链条是线性的，遇到第一个缺口就停
-            if step.remember:
+            if step.remember and step.id not in seeded:
                 window = self.pool.get(step.window)
                 window.replay(self._build_prompt(step), self.read_artifact(step.output))
             skipped.append(step.id)
@@ -813,7 +835,7 @@ class Orchestrator:
         if self.round >= MAX_ROUNDS:
             self.exit_reason = f"{why}；已到第 {self.round} 轮，两轮封顶"
             return False
-        spent = sum(r.get("cost_usd", 0) for r in self.trace._all_steps())
+        spent = self.trace.total_spent()
         if spent >= MAX_BUDGET_USD:
             self.exit_code = "budget-capped"
             self.exit_reason = f"{why}；已花 ${spent:.2f}，达到 ${MAX_BUDGET_USD} 上限，不开第 {self.round + 1} 轮"
@@ -893,6 +915,12 @@ class Orchestrator:
 
     def describe(self) -> str:
         return describe_profile(self.profile)
+
+
+def _merged(prev, new):
+    """同一步调了两次模型（人工指令重跑、假对立重生成）：保留后一次的产出，花费与 token 两次相加。"""
+    return replace(new, cost_usd=prev.cost_usd + new.cost_usd, tokens_in=prev.tokens_in + new.tokens_in,
+                   tokens_out=prev.tokens_out + new.tokens_out, attempts=prev.attempts + new.attempts)
 
 
 def detect_p1_return(text: str) -> bool:

@@ -50,3 +50,24 @@ Thumbs.db
 .env*
 !.env.example
 .live-run.json
+
+# ============================================================
+# 本地工作文件与过程文档 —— 只留在本机，不进仓库
+# ============================================================
+/CLAUDE.md
+/start_prompt.md
+/todo.md
+/experiments/
+/archive/
+/references/
+/docs/README.md
+/docs/liangyi-workflow-refined.md
+/docs/session-hygiene.md
+/docs/liangyi-auto-variant.md
+/docs/longterm-and-reference.md
+/docs/evaluation-layer-pivot.md
+/docs/evaluation.md
+/engine/VALIDATION.md
+/retrospective/voyageguard/RESULT.md
+/retrospective/voyageguard/additions-ledger.md
+/docs/visualizations/build_voyageguard_page.py

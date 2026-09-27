@@ -151,7 +151,7 @@ def extract_choice(advice_text: str,
     """
     从建议正文里抽出它实际主张选哪个。
 
-    用 gpt-5.6-luna 而不是推理模型 —— 这是结构化抽取任务，CLAUDE.md 的选型
+    用 gpt-5.6-luna 而不是推理模型 —— 这是结构化抽取任务，项目的选型
     纪律对这类任务写得很死：绝不能用推理模型（deepseek-v4-flash 处理同类任务
     曾经思考 16001 token 还不出内容）。
     """

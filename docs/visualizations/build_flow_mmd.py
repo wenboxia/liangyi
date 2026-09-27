@@ -70,7 +70,7 @@ readme = ROOT / "README.md"; s = readme.read_text(encoding="utf-8")
 start = "<!-- flow:start -->"; end = "<!-- flow:end -->"
 # 两张都放进折叠块：总览由 docs/images/architecture.png 承担，README 首屏不被长图占满
 block = (f"{start}\n<details>\n<summary><b>auto 档完整状态机</b>（全自动一次不停）</summary>\n\n```mermaid\n{auto}\n```\n\n</details>\n\n"
-         f"<details>\n<summary><b>hitl 档完整状态机</b>（只有 ★ 处不同：两个停点各有三个选项；选第 2 / 3 项那一步带指令重跑一次，2D 选「前提确实错了」走出口 A）</summary>\n\n```mermaid\n{hitl}\n```\n\n</details>\n{end}")
+         f"<details>\n<summary><b>hitl 档完整状态机</b>（只有 ★ 处不同：两个停点各有三个选项；2C 选第 2 / 3 项、2D 选第 2 项，那一步带指令重跑一次；2D 选「前提确实错了」，第 1 轮走出口 A，第 2 轮以判定书收场）</summary>\n\n```mermaid\n{hitl}\n```\n\n</details>\n{end}")
 if start in s:
     s = s[:s.index(start)] + block + s[s.index(end) + len(end):]
 else:

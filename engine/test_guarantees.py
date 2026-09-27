@@ -671,8 +671,8 @@ def _fake_output(step_id: str, round_no: int, plan: dict) -> str:
                 "tension: 同一决策给出相反答案\n")
     if step_id == "2D-fix":
         kind = plan.get(round_no, "v5")
-        if kind == "back":
-            return f"【判定】回P1\n{_KILL}{IDEA_SEPARATOR}\n判定书：方向被推翻"
+        if kind == "back":        # 按 p2d_fix.md 的约定：判回 P1 不写分隔标记、不产出方案
+            return f"【判定】回P1\n{_KILL}最终判定：回 P1 重做"
         if kind == "p2":
             return f"【判定】产出v5\n{_PREMISE}{IDEA_SEPARATOR}\n第 {round_no} 轮 v5 正文"
         return f"【判定】产出v5\n{_MINOR}{IDEA_SEPARATOR}\n第 {round_no} 轮 v5 正文"
@@ -691,7 +691,12 @@ def _fake_orch(plan: dict, mode="auto", provider=None):
 
     def _call(step, extra=""):
         calls.append((o.round, step.id))
-        c = _fake_completion(_fake_output(step.id, o.round, plan))
+        if "必须产出修订版" in extra:          # 第 2 轮终止条件要求重写修订版
+            from .orchestrator import IDEA_SEPARATOR
+            text = f"【判定】产出v5\n{_KILL}{IDEA_SEPARATOR}\n第 {o.round} 轮 v5 正文"
+        else:
+            text = _fake_output(step.id, o.round, plan)
+        c = _fake_completion(text)
         o._last_completion = c
         return c.content
     o._call_step = _call
@@ -722,9 +727,13 @@ def test_multi_round_driver() -> None:
     r2 = [sid for r, sid in calls if r == 2]
     check(rounds_seen == [(2, EXIT_BACK_P1)], "第 1 轮判回 P1 → 开出第 2 轮（出口 A）", f"实际 {rounds_seen}")
     check(r2[:1] == ["P0"] and "2D-fix" in r2, "第 2 轮从 P0 起整链重跑到 2D-fix", f"第 2 轮 {r2}")
-    check((o.run_dir / "artifacts" / "round-1" / "P2D-fix-judgment.md").exists()
-          and (o.run_dir / "artifacts" / "round-2" / "idea-v5.md").exists(),
+    v5_r2 = (o.run_dir / "artifacts" / "round-2" / "idea-v5.md")
+    check((o.run_dir / "artifacts" / "round-1" / "P2D-fix-judgment.md").exists() and v5_r2.exists(),
           "第 1 轮留判定书、第 2 轮被兜底改判为交付 v5")
+    body = v5_r2.read_text(encoding="utf-8") if v5_r2.exists() else ""
+    check("v5 正文" in body and not body.startswith("【判定】") and "终止条件兜底" in meta.get("exit_reason", ""),
+          "第 2 轮模型照回 P1 的格式只写了判定书时，重新要来修订版，不拿判定书冒充 v5",
+          f"exit_reason={meta.get('exit_reason')}")
     check(meta.get("rounds") == 2 and meta.get("verdicts") == ["back-to-p1", "produced-v5"]
           and meta.get("verdict") == "produced-v5",
           "run.json 记下两轮、每轮判定与最终判定", f"实际 {meta.get('rounds')} {meta.get('verdicts')}")
@@ -740,6 +749,18 @@ def test_multi_round_driver() -> None:
     check((art / "round-2" / "idea-v1.md").read_text(encoding="utf-8")
           == (art / "round-1" / "idea-v5.md").read_text(encoding="utf-8"),
           "上一轮 v5 逐字成为本轮 v1")
+
+    # 回 P2 开出的一轮：续跑 / 网页每个请求重建窗口时，不把拷来的 P0/P1 对话补进窗口
+    from .orchestrator import Orchestrator as _O, Scenario as _S
+    art2 = o.run_dir / "artifacts" / "round-2"
+    for f in list(art2.iterdir()):
+        if f.name not in {"_round.json", "P0-refined.md", "P1-roles.yaml", "P1A-expert-a.md",
+                          "P1B-expert-b.md", "idea-v1.md"}:
+            f.unlink()
+    o3 = _O(_S.load(Path("scenarios/dev-diagnose.yaml")), resume_dir=o.run_dir, mode="auto")
+    o3.restore()
+    check(o3.round == 2 and all(w["turns"] == 0 for w in o3.pool.summary()),
+          "回 P2 那一轮重建窗口时是空的，和命令行一致", f"{o3.pool.summary()}")
 
     # 正常交付：一轮结束
     o, calls = _fake_orch({1: "v5"})
@@ -773,6 +794,17 @@ def test_multi_round_driver() -> None:
     check("人工判定" in (o.run_dir / "artifacts" / "round-1" / "P2D-fix-judgment.md").read_text(encoding="utf-8"),
           "人工判定写进判定书，这一步的花费照记",
           f"trace 步数 {meta.get('steps')}")
+
+    # 记账：人工指令重跑时，被替换掉的那次调用也算进花费
+    def reviser(step, raw, gate):
+        return Decision("rollback-more" if step.id == "2C-rollback" else "revise", instruction="按我说的改")
+    o, calls = _fake_orch({1: "v5"}, mode="hitl", provider=reviser)
+    o.run_chain()
+    o.finish()
+    meta = json.loads((o.run_dir / "run.json").read_text(encoding="utf-8"))
+    check(abs(meta.get("total_cost_usd", 0) - 0.001 * len(calls)) < 1e-9,
+          "hitl 两处都带指令重跑：每次模型调用都记进总花费",
+          f"调用 {len(calls)} 次，记账 ${meta.get('total_cost_usd')}")
 
     # 路由不再有死锁出口
     import inspect as _inspect

@@ -41,7 +41,7 @@ for i, x in enumerate(log):
     elif x["mode"] == "result":
         dur = 4000 if last_of_mode else 400
     else:
-        dur = 140
+        dur = 100
     prev_mode = x["mode"]
     frames.append(canvas.quantize(colors=96, method=Image.MEDIANCUT, dither=Image.NONE))
     durs.append(dur)

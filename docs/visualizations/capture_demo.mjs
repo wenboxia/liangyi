@@ -1,4 +1,4 @@
-// 线上实跑一条 hitl 链并逐帧截图。帧：固定 1200x1200 CSS px 区域，DPR 2。
+// 线上实跑一条 hitl 链并逐帧截图：npm i puppeteer-core 后 node capture_demo.mjs（默认打开线上站，URL 环境变量可改）。
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 const URL = process.env.URL || 'https://liangyi-five.vercel.app/';
@@ -12,7 +12,13 @@ const rect = sel => p.evaluate(s => { const e=document.querySelector(s); if(!e) 
 async function frame(mode, anchorSel, before=420) {
   await p.evaluate(()=>window.scrollTo({top:0, behavior:'instant'}));
   let y;
-  if (mode==='progress') y = (await rect('#seed')).top - 30;
+  if (mode==='progress') {
+    // 默认从输入框往下拍；进行到的步骤滑出画面时（第 2 轮），镜头跟着往下走
+    y = (await rect('#seed')).top - 30;
+    const cur = await p.evaluate(() => { const e = document.querySelector('.step.doing, .step.await') || [...document.querySelectorAll('.step.done')].pop();
+      if (!e) return null; const r = e.getBoundingClientRect(); return {top: r.top + scrollY, h: r.height}; });
+    if (cur && cur.top + cur.h > y + 1120) y = cur.top + cur.h - 1120;
+  }
   else { const r = await rect(anchorSel); y = Math.max(0, r.top - before); }
   n++; const f = `frames/${String(n).padStart(4,'0')}.png`;
   await p.screenshot({path:f, clip:{x:0, y, width:1200, height:1200}});

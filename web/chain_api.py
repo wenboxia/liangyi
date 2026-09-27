@@ -13,7 +13,8 @@ serverless 单函数装不下；分步之后每一步最长一两分钟，任何
 
 为什么不另写一套链条逻辑：提示词、模型路由、窗口隔离、判定解析全在引擎里，
 另写一套等于再养一份会漂的副本。这里只做「把文件铺进临时目录 → 让引擎续跑一步
-→ 把目录读回来」，引擎一行不改。restore() 本来就能从产物重建窗口历史。
+→ 把目录读回来」。引擎为网页只留了 decision_provider / precomputed 两个口子（没决定时抛
+AwaitingDecision），终端路径两者为空、行为不变；restore() 本来就能从产物重建窗口历史。
 """
 from __future__ import annotations
 

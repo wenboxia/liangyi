@@ -89,6 +89,7 @@ class DecisionRecord:
     advisor_b_choice: str | None = None
     concur: bool | None = None          # 人的选择是否和两位顾问都一致
     verbatim_paste: bool | None = None  # 人的理由是否就是某份建议的原文
+    cost_usd: float = 0.0               # 这次决策附带的模型花费（检测器投票、顾问抽取）
     round: int = 1
     timestamp: str = field(default_factory=_now)
     kind: str = "decision"
@@ -243,7 +244,10 @@ class Trace:
         advice=None,
         human_text: str = "",
         round: int = 1,
+        cost_usd: float = 0.0,
     ) -> DecisionRecord:
+        if not cost_usd and advice is not None:
+            cost_usd = float(getattr(advice, "cost_usd", 0.0) or 0.0)
         record = DecisionRecord(
             step_id=step_id,
             position=position,
@@ -255,6 +259,7 @@ class Trace:
             think_ms=think_ms,
             detail=detail,
             round=round,
+            cost_usd=cost_usd,
             **_advice_fields(advice, decision, human_text),
         )
         self._append(record)
@@ -288,6 +293,16 @@ class Trace:
                 out.append(r)
         return out
 
+    def total_spent(self) -> float:
+        """整条链真实花掉的钱：步骤调用 + 检测器、顾问抽取等附带调用，从 trace.jsonl 全量算。"""
+        if not self.path.exists():
+            return 0.0
+        total = 0.0
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                total += float(json.loads(line).get("cost_usd", 0) or 0)
+        return total
+
     @property
     def total_cost(self) -> float:
         return sum(r.cost_usd for r in self.steps)
@@ -307,7 +322,7 @@ class Trace:
                 "finished_at": _now(),
                 "status": status,
                 "steps": len(allsteps),
-                "total_cost_usd": round(sum(r["cost_usd"] for r in allsteps), 6),
+                "total_cost_usd": round(self.total_spent(), 6),
                 "tokens_in": sum(r["tokens_in"] for r in allsteps),
                 "tokens_out": sum(r["tokens_out"] for r in allsteps),
                 "reasoning_captured": sum(1 for r in allsteps if r.get("reasoning")),

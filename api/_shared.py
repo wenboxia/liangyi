@@ -2,7 +2,7 @@
 Vercel Python 函数共用的一小块：路径、限次、JSON 响应。
 
 Vercel 把 api/ 下每个 .py 当一个函数；下划线开头的文件不会被当成路由，
-所以共用逻辑放这里。真正的链条逻辑在 web/chain_api.py，引擎一行不改。
+所以共用逻辑放这里。真正的分步逻辑在 web/chain_api.py，链条本身仍是 engine/ 里同一套。
 
 限次：每 IP 每天 3 条链。serverless 实例之间不共享内存，所以**内存计数在线上
 基本不起作用**（换个实例或冷启动就归零）。配了 Upstash / Vercel KV 的

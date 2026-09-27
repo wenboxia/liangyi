@@ -594,7 +594,7 @@ function finish(r) {
   const el = $('#verdict');
   let final = '';
   for (let n = rounds; n >= 1 && !final; n--) final = files[`artifacts/round-${n}/idea-v5.md`] || files[`artifacts/round-${n}/P2D-fix-judgment.md`] || '';
-  const took = `全程 ${fmt((Date.now() - t0) / 1000)}、$${cost.toFixed(4)}`;
+  const took = `全程 ${fmt((Date.now() - t0) / 1000)}、$${(r.total_cost ?? cost).toFixed(4)}`;
   if (v === 'back-to-p1') {
     el.textContent = `判定：回 P1 · 第 ${rounds} 轮`; el.className = 'verdict warn'; $('#r-title').textContent = '分级判定书';
     $('#r-note').textContent = r.exit === 'budget-capped'
