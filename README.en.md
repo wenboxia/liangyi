@@ -44,7 +44,7 @@ One product idea in; one proposal out, after four independent critiques. Seven r
 - [The problem](#the-problem)
 - [Architecture](#architecture): [Overview](#overview) · [Multi-agent system design](#multi-agent-system-design) · [Seven roles and their models](#seven-roles-and-their-models) · [Three exits](#three-exits) · [Full state machine](#full-state-machine)
 - [Evaluation](#evaluation)
-- [Repository layout](#repository-layout) · [Further reading](#further-reading) · [Quick start](#quick-start) · [Other projects by the author](#other-projects-by-the-author)
+- [Repository layout](#repository-layout) · [Further reading](#further-reading) · [Quick start](#quick-start)
 
 ## Live demo
 
@@ -219,14 +219,3 @@ python3 -m engine.inspect runs/<run-dir> --diff idea-v1.md idea-v5.md
 ```
 
 Local web entry: `python3 web/server.py`, then open `http://127.0.0.1:8765`.
-
-## Other projects by the author
-
-| Project | What it is |
-| --- | --- |
-| [**AIRadar**](https://github.com/wenboxia/airadar) | A daily scheduled AI-industry intelligence workflow · [live](https://wenboxia.github.io/airadar/) |
-| [**VoyageGuard**](https://github.com/wenboxia/VoyageGuard) | An AI-agent travel-weather risk decision tool for flights and boats, LLM reasoning backed by a rule-engine safety net · [live](https://voyageguard-two.vercel.app). The retrospective above uses its real development history |
-
-## Author
-
-Wenbo Xia (夏文博) · AI product manager · [MIT License](LICENSE)

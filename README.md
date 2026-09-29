@@ -44,7 +44,7 @@
 - [它解决什么](#它解决什么)
 - [架构](#架构)：[流程总览](#流程总览) · [多 Agent 系统设计](#多-agent-系统设计) · [7 个角色与模型](#7-个角色与模型) · [三个出口](#三个出口) · [完整状态机](#完整状态机)
 - [评测](#评测)
-- [项目结构](#项目结构) · [深一层的材料](#深一层的材料) · [快速上手](#快速上手) · [同作者的其他项目](#同作者的其他项目)
+- [项目结构](#项目结构) · [深一层的材料](#深一层的材料) · [快速上手](#快速上手)
 
 ## 在线体验
 
@@ -321,14 +321,3 @@ python3 -m engine.inspect runs/<运行目录> --diff idea-v1.md idea-v5.md
 ```
 
 在线入口本地起：`python3 web/server.py`，然后打开 `http://127.0.0.1:8765`。
-
-## 同作者的其他项目
-
-| 项目 | 是什么 |
-| --- | --- |
-| [**AIRadar**](https://github.com/wenboxia/airadar) | 每日定时运行的 AI 行业情报工作流 · [在线看](https://wenboxia.github.io/airadar/) |
-| [**VoyageGuard**](https://github.com/wenboxia/VoyageGuard) | AI Agent 驱动的出行气象风险决策工具，专注飞机与船只场景，LLM 推理 + 规则引擎安全网双重保障 · [在线用](https://voyageguard-two.vercel.app)。本仓库的回溯对照用的就是它的真实开发史 |
-
-## 作者
-
-夏文博（Wenbo Xia）· AI 产品经理 · [MIT License](LICENSE)
